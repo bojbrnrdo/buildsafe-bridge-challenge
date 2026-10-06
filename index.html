@@ -3,229 +3,391 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#07111f">
+  <meta name="theme-color" content="#0a111a">
   <meta name="description" content="BuildSafe is an educational civil engineering bridge design game.">
   <title>BuildSafe — Bridge Engineering Game</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="game-shell">
+  <div class="app">
     <header class="topbar">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">BS</div>
         <div>
-          <div class="eyebrow">CIVIL ENGINEERING SIM</div>
+          <p>CIVIL ENGINEERING GAME</p>
           <h1>BuildSafe</h1>
         </div>
       </div>
 
-      <div class="hud" aria-label="Player status">
-        <div class="hud-item"><span>LEVEL</span><strong id="levelValue">1</strong></div>
-        <div class="hud-item hud-wide"><span>XP</span><strong id="xpValue">0 / 500</strong><div class="xp-track"><i id="xpBar"></i></div></div>
-        <div class="hud-item"><span>SCORE</span><strong id="scoreValue">0</strong></div>
-        <button class="icon-btn" id="soundBtn" type="button" aria-label="Toggle sound" title="Toggle sound">🔊</button>
-        <button class="icon-btn" id="helpBtn" type="button" aria-label="Open engineering guide" title="Engineering guide">?</button>
+      <div class="player-bar" aria-label="Player progress">
+        <div class="player-stat">
+          <span>Level</span>
+          <strong id="levelValue">1</strong>
+        </div>
+        <div class="player-stat xp-stat">
+          <div><span>Experience</span><strong id="xpValue">0 / 500</strong></div>
+          <div class="xp-track"><i id="xpBar"></i></div>
+        </div>
+        <div class="player-stat">
+          <span>Total score</span>
+          <strong id="scoreValue">0</strong>
+        </div>
+        <button class="icon-btn" id="soundBtn" type="button" aria-label="Toggle sound">🔊</button>
+        <button class="icon-btn" id="helpBtn" type="button" aria-label="Open game guide">?</button>
       </div>
     </header>
 
     <main>
-      <section class="mission-banner">
-        <div>
-          <div class="mission-kicker"><span id="missionNumber">MISSION 01</span><span id="difficultyBadge" class="badge">ROOKIE</span></div>
+      <section class="mission-card">
+        <div class="mission-copy">
+          <div class="mission-meta">
+            <span id="missionNumber">MISSION 01</span>
+            <span class="difficulty" id="difficultyBadge">ROOKIE</span>
+          </div>
           <h2 id="missionTitle">Neighborhood Connector</h2>
-          <p id="missionStory">Design a safe crossing for a growing community.</p>
+          <p id="missionStory">Design a safe two-lane bridge for a growing community.</p>
         </div>
-        <div class="mission-stats">
-          <div><span>SPAN</span><strong id="missionSpan">8.0 m</strong></div>
-          <div><span>DESIGN LOAD</span><strong id="missionLoad">100 kN</strong></div>
-          <div><span>MAX BUDGET</span><strong id="missionBudget">₱180,000</strong></div>
-          <div><span>ATTEMPTS</span><strong id="attemptsValue">3</strong></div>
+
+        <div class="mission-brief">
+          <div>
+            <span>Clear span</span>
+            <strong id="missionSpan">10.0 m</strong>
+          </div>
+          <div>
+            <span>Vehicle load</span>
+            <strong id="missionLoad">420 kN</strong>
+          </div>
+          <div>
+            <span>Project budget</span>
+            <strong id="missionBudget">₱1,550,000</strong>
+          </div>
+          <div>
+            <span>Test attempts</span>
+            <strong id="attemptsValue">3</strong>
+          </div>
         </div>
       </section>
 
-      <section class="game-grid">
-        <aside class="panel controls-panel">
-          <div class="panel-head">
+      <section class="workflow-strip" aria-label="Game steps">
+        <div class="workflow-step active"><b>1</b><span><strong>Design</strong><small>Choose your bridge section</small></span></div>
+        <div class="workflow-line"></div>
+        <div class="workflow-step"><b>2</b><span><strong>Load test</strong><small>Send the truck across</small></span></div>
+        <div class="workflow-line"></div>
+        <div class="workflow-step"><b>3</b><span><strong>Inspection</strong><small>Pass safety and budget checks</small></span></div>
+      </section>
+
+      <section class="main-grid">
+        <aside class="panel design-panel">
+          <div class="panel-heading">
             <div>
-              <span class="section-no">01</span>
-              <h3>Design Lab</h3>
+              <span>STEP 1</span>
+              <h3>Design your bridge</h3>
+              <p>Start with the suggested design, then improve it for safety and cost.</p>
             </div>
-            <button class="text-btn" id="resetDesignBtn" type="button">Reset design</button>
+            <button class="ghost-btn" id="suggestBtn" type="button">Suggested design</button>
           </div>
 
-          <fieldset class="material-fieldset">
-            <legend>Structural material</legend>
-            <div class="material-grid" id="materialGrid">
-              <label class="material-card">
+          <div class="design-section">
+            <div class="section-title">
+              <div>
+                <strong>A. Material</strong>
+                <small>Material changes strength, stiffness, weight and cost.</small>
+              </div>
+            </div>
+
+            <div class="material-options">
+              <label class="material-option">
                 <input type="radio" name="material" value="steel" checked>
-                <span class="material-icon">ST</span>
-                <span><strong>Structural Steel</strong><small>Strong · stiff · premium</small></span>
+                <span class="material-code">ST</span>
+                <span class="material-text">
+                  <strong>Steel I-girder</strong>
+                  <small>Strong and stiff</small>
+                </span>
+                <span class="material-tag">Recommended</span>
               </label>
-              <label class="material-card">
+
+              <label class="material-option">
                 <input type="radio" name="material" value="timber">
-                <span class="material-icon">TM</span>
-                <span><strong>Engineered Timber</strong><small>Light · economical · flexible</small></span>
+                <span class="material-code">GL</span>
+                <span class="material-text">
+                  <strong>Glulam timber</strong>
+                  <small>Low cost, more flexible</small>
+                </span>
               </label>
-              <label class="material-card">
+
+              <label class="material-option">
                 <input type="radio" name="material" value="aluminum">
-                <span class="material-icon">AL</span>
-                <span><strong>Aluminum</strong><small>Light · corrosion resistant</small></span>
+                <span class="material-code">AL</span>
+                <span class="material-text">
+                  <strong>Aluminum box</strong>
+                  <small>Light but expensive</small>
+                </span>
               </label>
             </div>
-          </fieldset>
-
-          <div class="control-group">
-            <div class="control-label"><label for="widthRange">Girder width</label><output id="widthOut">250 mm</output></div>
-            <input id="widthRange" type="range" min="150" max="650" step="10" value="250">
-            <div class="range-scale"><span>150</span><span>650 mm</span></div>
           </div>
 
-          <div class="control-group">
-            <div class="control-label"><label for="depthRange">Girder depth</label><output id="depthOut">500 mm</output></div>
-            <input id="depthRange" type="range" min="250" max="1200" step="10" value="500">
-            <div class="range-scale"><span>250</span><span>1200 mm</span></div>
-          </div>
+          <div class="design-section">
+            <div class="section-title">
+              <div>
+                <strong>B. Girder size</strong>
+                <small>Deeper girders resist bending and deflection much better.</small>
+              </div>
+              <div class="preset-row" aria-label="Design presets">
+                <button type="button" data-preset="economy">Economy</button>
+                <button type="button" data-preset="balanced" class="selected">Balanced</button>
+                <button type="button" data-preset="heavy">Heavy duty</button>
+              </div>
+            </div>
 
-          <div class="control-group">
-            <div class="control-label"><label for="girderRange">Parallel girders</label><output id="girderOut">2</output></div>
-            <input id="girderRange" type="range" min="1" max="6" step="1" value="2">
-            <div class="range-scale"><span>1</span><span>6 girders</span></div>
-          </div>
+            <div class="dimension-row">
+              <label for="widthRange">
+                <span>Girder width <button class="info-dot" type="button" data-tip="Width b is the horizontal section dimension used by the simplified structural model." aria-label="About girder width">i</button></span>
+                <output id="widthOut">300 mm</output>
+              </label>
+              <input id="widthRange" type="range" min="220" max="520" step="10" value="300">
+              <div class="range-labels"><span>220 mm</span><span>520 mm</span></div>
+            </div>
 
-          <div class="live-estimate">
-            <div><span>EST. COST</span><strong id="costPreview">₱0</strong></div>
-            <div><span>EST. MASS</span><strong id="massPreview">0 t</strong></div>
-            <div><span>BUDGET USED</span><strong id="budgetPreview">0%</strong></div>
-          </div>
+            <div class="dimension-row">
+              <label for="depthRange">
+                <span>Girder depth <button class="info-dot" type="button" data-tip="Depth h has the strongest effect on bending stiffness because inertia increases approximately with h³." aria-label="About girder depth">i</button></span>
+                <output id="depthOut">700 mm</output>
+              </label>
+              <input id="depthRange" type="range" min="450" max="1200" step="10" value="700">
+              <div class="range-labels"><span>450 mm</span><span>1200 mm</span></div>
+            </div>
 
-          <button class="test-btn" id="testBtn" type="button">
-            <span class="test-icon">▶</span>
-            <span><strong>RUN LOAD TEST</strong><small>Simulate the mission design load</small></span>
-          </button>
-        </aside>
+            <div class="dimension-row">
+              <label for="girderRange">
+                <span>Parallel girders <button class="info-dot" type="button" data-tip="The vehicle and deck loads are shared across the selected number of parallel girders." aria-label="About number of girders">i</button></span>
+                <output id="girderOut">4 girders</output>
+              </label>
+              <input id="girderRange" type="range" min="3" max="7" step="1" value="4">
+              <div class="range-labels"><span>3</span><span>7</span></div>
+            </div>
 
-        <section class="panel sim-panel">
-          <div class="panel-head">
-            <div><span class="section-no">02</span><h3>Load Test Arena</h3></div>
-            <div class="sim-status" id="simStatus"><i></i><span>DESIGN MODE</span></div>
-          </div>
-
-          <div class="arena" id="arena">
-            <div class="skyline" aria-hidden="true"></div>
-            <svg class="bridge-svg" viewBox="0 0 900 360" role="img" aria-label="Animated simplified bridge model">
-              <defs>
-                <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#16304d"/>
-                  <stop offset="100%" stop-color="#081525"/>
-                </linearGradient>
-                <filter id="softShadow"><feDropShadow dx="0" dy="8" stdDeviation="6" flood-opacity=".35"/></filter>
-              </defs>
-              <rect x="0" y="280" width="900" height="80" fill="url(#waterGrad)"/>
-              <g class="bridge-world">
-                <rect x="50" y="221" width="100" height="59" rx="3" class="abutment"/>
-                <rect x="750" y="221" width="100" height="59" rx="3" class="abutment"/>
-                <g id="bridgeStructure" filter="url(#softShadow)">
-                  <path id="deckPath" d="M130 210 Q450 210 770 210" class="deck"/>
-                  <path id="girderPath" d="M130 225 Q450 225 770 225" class="girder"/>
-                  <g class="truss" id="trussGroup">
-                    <path d="M150 220 L230 160 L310 220 L390 160 L470 220 L550 160 L630 220 L710 160 L750 220" />
-                    <path d="M150 220 L230 220 L310 220 L390 220 L470 220 L550 220 L630 220 L710 220 L750 220" />
-                  </g>
-                </g>
-                <g id="truck" class="truck" transform="translate(70 177)">
-                  <rect x="0" y="7" width="52" height="25" rx="4"/>
-                  <rect x="50" y="15" width="26" height="17" rx="3"/>
-                  <circle cx="18" cy="35" r="8"/><circle cx="58" cy="35" r="8"/>
-                </g>
-                <g class="load-arrow" id="loadArrow">
-                  <path d="M450 88 L450 165"/><path d="M438 151 L450 166 L462 151"/>
-                  <text x="450" y="74" text-anchor="middle" id="loadArrowText">100 kN</text>
-                </g>
-              </g>
-              <text x="28" y="338" class="water-label">RIVER / CLEAR SPAN</text>
-            </svg>
-
-            <div class="arena-overlay">
-              <div class="meter">
-                <div class="meter-head"><span>STRUCTURAL UTILIZATION</span><strong id="utilValue">0%</strong></div>
-                <div class="meter-track"><i id="utilBar"></i><span class="sweet-zone"></span></div>
-                <div class="meter-labels"><span>UNDERUSED</span><span>OPTIMAL</span><span>FAILURE</span></div>
+            <div class="section-preview">
+              <div class="section-diagram" aria-label="Girder section preview">
+                <div class="dimension-v"><span id="depthDiagram">700</span> mm</div>
+                <div class="i-shape" id="sectionShape"><i></i><b></b><i></i></div>
+                <div class="dimension-h"><span id="widthDiagram">300</span> mm</div>
+              </div>
+              <div class="preview-facts">
+                <div><span>Girder system mass</span><strong id="girderMassPreview">—</strong></div>
+                <div><span>Bridge dead load</span><strong id="deadLoadPreview">—</strong></div>
+                <div><span>Estimated project cost</span><strong id="costPreview">—</strong></div>
+                <div><span>Budget used</span><strong id="budgetPreview">—</strong></div>
               </div>
             </div>
           </div>
 
-          <div class="telemetry">
-            <article><span>BENDING STRESS</span><strong id="stressValue">—</strong><small id="stressLimit">Limit —</small></article>
-            <article><span>DEFLECTION</span><strong id="deflectionValue">—</strong><small id="deflectionLimit">Limit —</small></article>
-            <article><span>COST</span><strong id="costValue">—</strong><small id="costLimit">Budget —</small></article>
-            <article><span>SAFETY</span><strong id="safetyValue">READY</strong><small id="safetySub">Awaiting load test</small></article>
+          <div class="design-advice" id="designAdvice">
+            <div class="advice-icon">i</div>
+            <div><strong>Design tip</strong><p>Start with the balanced preset. After a successful test, reduce material carefully to improve your score.</p></div>
           </div>
 
-          <div class="event-log" id="eventLog" aria-live="polite">
-            <div><time>SYS</time><span>Design station online. Configure your bridge and run the load test.</span></div>
+          <button class="primary-action" id="testBtn" type="button">
+            <span class="play">▶</span>
+            <span><strong>Run load test</strong><small>Apply dead load, drive the design truck across, then inspect the bridge</small></span>
+          </button>
+        </aside>
+
+        <section class="panel simulation-panel">
+          <div class="panel-heading compact">
+            <div>
+              <span>STEP 2</span>
+              <h3>Bridge load test</h3>
+              <p>Watch how the bridge responds as the design vehicle crosses the span.</p>
+            </div>
+            <div class="test-status" id="simStatus"><i></i><span>Ready to test</span></div>
           </div>
+
+          <div class="scene" id="arena">
+            <div class="scene-label top-left"><span>SIMULATION</span><strong id="sceneLoadCase">Service condition</strong></div>
+            <div class="weather" aria-hidden="true"><span>☁</span><small>Dry · 24°C</small></div>
+
+            <svg class="bridge-scene" viewBox="0 0 1000 500" role="img" aria-label="Side view of a two-lane girder bridge during a vehicle load test">
+              <defs>
+                <linearGradient id="skyGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#9ec6d8"/>
+                  <stop offset="100%" stop-color="#d9e8eb"/>
+                </linearGradient>
+                <linearGradient id="waterGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#608aa0"/>
+                  <stop offset="100%" stop-color="#375e74"/>
+                </linearGradient>
+                <linearGradient id="roadGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#444a4e"/>
+                  <stop offset="100%" stop-color="#292f33"/>
+                </linearGradient>
+                <filter id="bridgeShadow">
+                  <feDropShadow dx="0" dy="10" stdDeviation="7" flood-opacity=".24"/>
+                </filter>
+              </defs>
+
+              <rect width="1000" height="500" fill="url(#skyGradient)"/>
+              <path d="M0 250 Q100 195 220 242 T450 225 T690 242 T1000 205 L1000 330 L0 330Z" fill="#849e8a" opacity=".8"/>
+              <path d="M0 285 Q130 230 270 280 T560 270 T840 275 T1000 245 L1000 340 L0 340Z" fill="#6b8776"/>
+              <rect y="350" width="1000" height="150" fill="url(#waterGradient)"/>
+
+              <g id="bridgeStructure" filter="url(#bridgeShadow)">
+                <g class="abutment left">
+                  <path d="M62 301 L165 301 L165 414 L37 414 L37 331Z"/>
+                  <rect x="145" y="286" width="24" height="18" class="bearing"/>
+                </g>
+                <g class="abutment right">
+                  <path d="M835 301 L938 301 L963 331 L963 414 L835 414Z"/>
+                  <rect x="831" y="286" width="24" height="18" class="bearing"/>
+                </g>
+
+                <path id="girderPath" class="main-girder" d="M156 304 Q500 304 844 304"/>
+                <path id="deckPath" class="road-deck" d="M145 282 Q500 282 855 282"/>
+                <path id="roadPath" class="road-surface" d="M145 275 Q500 275 855 275"/>
+                <path class="barrier" d="M150 265 Q500 265 850 265"/>
+                <g class="lane-marks">
+                  <path d="M190 273 L245 273 M290 273 L345 273 M390 273 L445 273 M490 273 L545 273 M590 273 L645 273 M690 273 L745 273 M790 273 L830 273"/>
+                </g>
+
+                <g id="girderLines" class="girder-lines"></g>
+
+                <g id="crackGroup" class="cracks" hidden>
+                  <path d="M490 287 l9 10 l-7 9 l13 12 l-9 12"/>
+                  <path d="M520 289 l-7 11 l8 9 l-10 12"/>
+                </g>
+              </g>
+
+              <g id="truck" class="truck" transform="translate(83 220)">
+                <rect x="0" y="22" width="78" height="29" rx="5" class="truck-body"/>
+                <rect x="67" y="29" width="37" height="22" rx="4" class="truck-cab"/>
+                <path d="M76 29 L84 15 L100 15 L104 29Z" class="truck-cab"/>
+                <rect x="9" y="28" width="43" height="5" rx="2" class="truck-detail"/>
+                <circle cx="20" cy="55" r="10"/><circle cx="70" cy="55" r="10"/><circle cx="92" cy="55" r="10"/>
+              </g>
+
+              <g id="loadArrow" class="load-arrow">
+                <path d="M500 105 L500 222"/>
+                <path d="M487 207 L500 224 L513 207"/>
+                <rect x="438" y="72" width="124" height="33" rx="8"/>
+                <text x="500" y="94" text-anchor="middle" id="loadArrowText">420 kN vehicle</text>
+              </g>
+
+              <g class="dimension-span">
+                <path d="M159 444 L841 444 M159 436 L159 452 M841 436 L841 452"/>
+                <text x="500" y="468" text-anchor="middle" id="spanDiagramText">10.0 m CLEAR SPAN</text>
+              </g>
+            </svg>
+
+            <div class="test-timeline" id="testTimeline">
+              <div data-stage="dead"><i>1</i><span><strong>Dead load</strong><small>Deck + girder self-weight</small></span></div>
+              <b></b>
+              <div data-stage="vehicle"><i>2</i><span><strong>Vehicle crossing</strong><small>Dynamic live load</small></span></div>
+              <b></b>
+              <div data-stage="inspect"><i>3</i><span><strong>Inspection</strong><small>Strength · deflection · cost</small></span></div>
+            </div>
+          </div>
+
+          <div class="results-heading">
+            <div>
+              <span>STEP 3</span>
+              <h3>Engineering inspection</h3>
+            </div>
+            <div class="overall-result neutral" id="overallResult">Not tested</div>
+          </div>
+
+          <div class="check-grid">
+            <article class="check-card" id="strengthCard">
+              <div class="check-top"><span class="check-icon">S</span><span><strong>Strength</strong><small>Factored bending stress</small></span><em id="strengthState">Waiting</em></div>
+              <div class="check-value"><strong id="stressValue">—</strong><span> / <b id="stressLimit">—</b></span></div>
+              <div class="check-track"><i id="strengthBar"></i></div>
+              <p id="strengthNote">Run the load test to calculate demand.</p>
+            </article>
+
+            <article class="check-card" id="deflectionCard">
+              <div class="check-top"><span class="check-icon">D</span><span><strong>Deflection</strong><small>Service movement at midspan</small></span><em id="deflectionState">Waiting</em></div>
+              <div class="check-value"><strong id="deflectionValue">—</strong><span> / <b id="deflectionLimit">—</b></span></div>
+              <div class="check-track"><i id="deflectionBar"></i></div>
+              <p id="deflectionNote">Game service limit uses L/800.</p>
+            </article>
+
+            <article class="check-card" id="costCard">
+              <div class="check-top"><span class="check-icon">₱</span><span><strong>Budget</strong><small>Conceptual project estimate</small></span><em id="costState">Waiting</em></div>
+              <div class="check-value"><strong id="costValue">—</strong><span> / <b id="costLimit">—</b></span></div>
+              <div class="check-track"><i id="costBar"></i></div>
+              <p id="costNote">Includes deck, girders and simplified substructure allowance.</p>
+            </article>
+          </div>
+
+          <div class="inspector-box">
+            <div class="inspector-avatar">CE</div>
+            <div>
+              <span>Site engineer</span>
+              <strong id="inspectorTitle">Ready for your design</strong>
+              <p id="inspectorMessage">Use the controls on the left, then run the load test. I’ll explain exactly what passed or failed.</p>
+            </div>
+          </div>
+
+          <details class="engineering-details">
+            <summary>Show engineering calculation details</summary>
+            <div class="detail-grid">
+              <div><span>Dead load per girder</span><strong id="deadLoadResult">—</strong></div>
+              <div><span>Dynamic vehicle load / girder</span><strong id="liveLoadResult">—</strong></div>
+              <div><span>Maximum factored moment</span><strong id="momentResult">—</strong></div>
+              <div><span>Demand / capacity</span><strong id="utilizationResult">—</strong></div>
+            </div>
+            <p class="disclaimer">Educational simplified model only. Strength uses a game load combination of 1.2D + 1.6L, service deflection uses dead + dynamic vehicle load, and results are not code-compliant engineering design.</p>
+          </details>
         </section>
       </section>
 
-      <section class="bottom-grid">
-        <section class="panel campaign-panel">
-          <div class="panel-head">
-            <div><span class="section-no">03</span><h3>Campaign</h3></div>
-            <button class="text-btn danger" id="resetCampaignBtn" type="button">Reset campaign</button>
-          </div>
-          <div class="campaign-track" id="campaignTrack"></div>
-        </section>
-
-        <section class="panel engineer-panel">
-          <div class="panel-head"><div><span class="section-no">04</span><h3>Engineer Rating</h3></div></div>
-          <div class="rating-body">
-            <div class="grade" id="gradeValue">C</div>
-            <div>
-              <strong id="ratingTitle">Junior Designer</strong>
-              <p id="ratingText">Complete missions safely and efficiently to improve your rating.</p>
-            </div>
-          </div>
-          <div class="best-row"><span>Best mission score</span><strong id="bestScoreValue">0</strong></div>
-        </section>
+      <section class="campaign-section">
+        <div class="section-heading">
+          <div><span>CAMPAIGN</span><h3>Your projects</h3></div>
+          <div class="engineer-rank"><span>Engineer rating</span><strong id="gradeValue">C · Junior Designer</strong></div>
+        </div>
+        <div class="campaign-track" id="campaignTrack"></div>
+        <button class="reset-link" id="resetCampaignBtn" type="button">Reset campaign progress</button>
       </section>
     </main>
 
     <footer>
-      <span>BuildSafe v2.0 · Educational structural simulation</span>
-      <span>Not for real-world engineering design or construction decisions.</span>
+      <span>BuildSafe v3.0 · Educational bridge engineering game</span>
+      <span>Not for real-world structural design, permitting, or construction.</span>
     </footer>
   </div>
 
-  <dialog id="resultDialog" class="game-dialog">
-    <div class="dialog-inner">
-      <div class="dialog-icon" id="dialogIcon">✓</div>
-      <div class="dialog-kicker" id="dialogKicker">LOAD TEST COMPLETE</div>
-      <h2 id="dialogTitle">Bridge Approved</h2>
-      <p id="dialogMessage">Your design passed the mission.</p>
-      <div class="score-breakdown" id="scoreBreakdown"></div>
+  <div class="tooltip" id="tooltip" role="tooltip"></div>
+
+  <dialog id="resultDialog" class="result-dialog">
+    <div class="dialog-content">
+      <div class="result-mark" id="dialogIcon">✓</div>
+      <span class="dialog-label" id="dialogKicker">INSPECTION COMPLETE</span>
+      <h2 id="dialogTitle">Bridge approved</h2>
+      <p id="dialogMessage">Your design passed every mission requirement.</p>
+      <div class="dialog-stats" id="scoreBreakdown"></div>
       <div class="dialog-actions">
-        <button class="secondary-btn" id="closeResultBtn" type="button">Review design</button>
-        <button class="primary-btn" id="nextMissionBtn" type="button">Next mission →</button>
+        <button class="secondary-action" id="closeResultBtn" type="button">Review results</button>
+        <button class="primary-dialog-action" id="nextMissionBtn" type="button">Next project →</button>
       </div>
     </div>
   </dialog>
 
-  <dialog id="helpDialog" class="game-dialog help-dialog">
-    <div class="dialog-inner">
-      <div class="dialog-kicker">ENGINEERING GUIDE</div>
-      <h2>How BuildSafe works</h2>
-      <div class="guide-grid">
-        <article><strong>1. Read the mission</strong><p>Every project has a fixed span, target load and maximum budget.</p></article>
-        <article><strong>2. Build your section</strong><p>Choose material, beam width, beam depth and the number of parallel girders.</p></article>
-        <article><strong>3. Run the load test</strong><p>The truck applies the design load and the game checks stress, deflection and cost.</p></article>
-        <article><strong>4. Optimize</strong><p>A safe design passes, but an efficient design earns more points. Aim for high utilization without exceeding limits.</p></article>
+  <dialog id="helpDialog" class="help-dialog">
+    <div class="dialog-content">
+      <span class="dialog-label">QUICK START</span>
+      <h2>How to play BuildSafe</h2>
+      <div class="how-grid">
+        <article><b>1</b><div><strong>Read the project brief</strong><p>Know the span, truck load and maximum budget.</p></div></article>
+        <article><b>2</b><div><strong>Choose a structural system</strong><p>Pick the material, girder dimensions and number of girders.</p></div></article>
+        <article><b>3</b><div><strong>Run a load test</strong><p>The game adds bridge dead load and moves a design truck across the span.</p></div></article>
+        <article><b>4</b><div><strong>Read the inspection</strong><p>Pass strength, deflection and project budget. Then optimize for a better score.</p></div></article>
       </div>
-      <div class="formula-box">
-        <strong>Simplified beam model</strong>
-        <code>M = PL/4 · I = bh³/12 · σ = Mc/I · δ = PL³/(48EI)</code>
-        <p>Each parallel girder shares the applied load equally. The game uses simplified educational material properties and cost factors.</p>
+      <div class="model-note">
+        <strong>What makes the simulation more realistic?</strong>
+        <p>The model includes concrete deck dead load, girder self-weight, a 15% vehicle impact allowance, simplified factored strength loading, service deflection and material-specific section efficiency.</p>
       </div>
-      <div class="dialog-actions"><button class="primary-btn" id="closeHelpBtn" type="button">Got it</button></div>
+      <div class="dialog-actions">
+        <button class="primary-dialog-action" id="closeHelpBtn" type="button">Start designing</button>
+      </div>
     </div>
   </dialog>
 
