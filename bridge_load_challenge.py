@@ -131,6 +131,903 @@ PLAYER_BADGES = {
     "PX": "Project Lead",
 }
 
+MODE_ORDER = ["bridge", "building", "wall", "foundation"]
+
+GAME_MODES = {
+    "bridge": {
+        "name": "Bridge Design",
+        "difficulty": "STARTER",
+        "subtitle": "Moving loads · bending · deflection",
+        "badge": "BR",
+    },
+    "building": {
+        "name": "Building Stability",
+        "difficulty": "INTERMEDIATE",
+        "subtitle": "Lateral load · drift · bracing",
+        "badge": "BL",
+    },
+    "wall": {
+        "name": "Retaining Wall",
+        "difficulty": "ADVANCED",
+        "subtitle": "Earth pressure · sliding · overturning",
+        "badge": "RW",
+    },
+    "foundation": {
+        "name": "Foundation Design",
+        "difficulty": "EXPERT",
+        "subtitle": "Bearing pressure · settlement · soil",
+        "badge": "FD",
+    },
+}
+
+SPECIAL_MODE_CONFIG = {
+    "building": {
+        "controls": [
+            ("Column size", 350, 800, 10, 560, " mm"),
+            ("Bracing", 0, 100, 5, 65, "%"),
+            ("Floors", 4, 12, 1, 6, ""),
+        ],
+        "budget": 4200000.0,
+    },
+    "wall": {
+        "controls": [
+            ("Base width", 250, 550, 5, 400, " cm"),
+            ("Wall thickness", 25, 70, 5, 45, " cm"),
+            ("Drainage", 0, 100, 5, 85, "%"),
+        ],
+        "budget": 2500000.0,
+    },
+    "foundation": {
+        "controls": [
+            ("Footing width", 3000, 6000, 100, 5200, " mm"),
+            ("Thickness", 500, 1200, 50, 850, " mm"),
+            ("Soil improvement", 0, 100, 5, 50, "%"),
+        ],
+        "budget": 3000000.0,
+    },
+}
+
+
+class EngineeringModeWindow(tk.Toplevel):
+    def __init__(self, master, mode_key, on_complete):
+        super().__init__(master)
+        self.master_game = master
+        self.mode_key = mode_key
+        self.mode = GAME_MODES[mode_key]
+        self.config_data = SPECIAL_MODE_CONFIG[mode_key]
+        self.on_complete = on_complete
+        self.testing = False
+
+        self.title(f"BuildSafe — {self.mode['name']}")
+        self.geometry("1120x700")
+        self.minsize(960, 620)
+        self.configure(bg=COLORS["bg"])
+        self.protocol("WM_DELETE_WINDOW", self._back)
+
+        self.vars = []
+        self.value_labels = []
+        self.metric_labels = []
+
+        self._build()
+        self._draw_scene()
+        self.after(100, self.focus_force)
+
+    def _build(self):
+        top = tk.Frame(self, bg="#0B131B", padx=16, pady=10)
+        top.pack(fill="x")
+
+        tk.Label(
+            top,
+            text=self.mode["badge"],
+            bg=COLORS["accent"],
+            fg="#101820",
+            font=("Segoe UI", 11, "bold"),
+            width=4,
+            height=2,
+        ).pack(side="left")
+
+        heading = tk.Frame(top, bg="#0B131B")
+        heading.pack(side="left", padx=10)
+        tk.Label(
+            heading,
+            text=self.mode["name"],
+            bg="#0B131B",
+            fg=COLORS["text"],
+            font=("Segoe UI", 15, "bold"),
+        ).pack(anchor="w")
+        tk.Label(
+            heading,
+            text=self.mode["difficulty"],
+            bg="#0B131B",
+            fg=COLORS["accent"],
+            font=("Segoe UI", 7, "bold"),
+        ).pack(anchor="w")
+
+        tk.Button(
+            top,
+            text="BACK",
+            command=self._back,
+            bg=COLORS["panel2"],
+            fg=COLORS["text"],
+            activebackground=COLORS["line"],
+            activeforeground=COLORS["text"],
+            relief="flat",
+            bd=0,
+            padx=12,
+            pady=8,
+            font=("Segoe UI", 7, "bold"),
+            cursor="hand2",
+        ).pack(side="right")
+
+        body = tk.Frame(self, bg=COLORS["bg"])
+        body.pack(fill="both", expand=True, padx=14, pady=12)
+        body.columnconfigure(0, minsize=300)
+        body.columnconfigure(1, weight=1)
+        body.rowconfigure(0, weight=1)
+
+        controls = tk.Frame(
+            body,
+            bg=COLORS["panel"],
+            highlightbackground=COLORS["line"],
+            highlightthickness=1,
+            padx=16,
+            pady=16,
+        )
+        controls.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+
+        tk.Label(
+            controls,
+            text="DESIGN",
+            bg=COLORS["panel"],
+            fg=COLORS["accent"],
+            font=("Segoe UI", 7, "bold"),
+        ).pack(anchor="w")
+        tk.Label(
+            controls,
+            text=self.mode["subtitle"],
+            bg=COLORS["panel"],
+            fg=COLORS["muted"],
+            font=("Segoe UI", 8),
+        ).pack(anchor="w", pady=(2, 14))
+
+        for label, low, high, step, default, suffix in self.config_data["controls"]:
+            var = tk.DoubleVar(value=default)
+            self.vars.append(var)
+
+            row = tk.Frame(controls, bg=COLORS["panel"])
+            row.pack(fill="x", pady=8)
+
+            line = tk.Frame(row, bg=COLORS["panel"])
+            line.pack(fill="x")
+            tk.Label(
+                line,
+                text=label,
+                bg=COLORS["panel"],
+                fg=COLORS["text"],
+                font=("Segoe UI", 8),
+            ).pack(side="left")
+
+            value = tk.Label(
+                line,
+                text=f"{default:g}{suffix}",
+                bg=COLORS["panel"],
+                fg=COLORS["accent"],
+                font=("Segoe UI", 8, "bold"),
+            )
+            value.pack(side="right")
+            self.value_labels.append((value, suffix, var))
+
+            scale = tk.Scale(
+                row,
+                from_=low,
+                to=high,
+                resolution=step,
+                orient="horizontal",
+                variable=var,
+                command=lambda _=None: self._on_change(),
+                showvalue=False,
+                bg=COLORS["panel"],
+                troughcolor="#233746",
+                activebackground=COLORS["accent"],
+                highlightthickness=0,
+                bd=0,
+                sliderrelief="flat",
+            )
+            scale.pack(fill="x")
+
+        self.cost_preview = tk.Label(
+            controls,
+            text="",
+            bg=COLORS["panel2"],
+            fg=COLORS["text"],
+            font=("Segoe UI", 9, "bold"),
+            padx=10,
+            pady=10,
+        )
+        self.cost_preview.pack(fill="x", pady=(12, 8))
+
+        self.tip = tk.Label(
+            controls,
+            text="Tune the design, then run the simulation.",
+            wraplength=250,
+            justify="left",
+            bg=COLORS["panel"],
+            fg=COLORS["muted"],
+            font=("Segoe UI", 8),
+        )
+        self.tip.pack(fill="x", pady=(2, 10))
+
+        self.test_btn = tk.Button(
+            controls,
+            text="▶   RUN TEST",
+            command=self._run_test,
+            bg=COLORS["accent"],
+            fg="#101820",
+            activebackground="#FFC46D",
+            activeforeground="#101820",
+            relief="flat",
+            bd=0,
+            pady=12,
+            font=("Segoe UI", 9, "bold"),
+            cursor="hand2",
+        )
+        self.test_btn.pack(fill="x")
+
+        right = tk.Frame(
+            body,
+            bg=COLORS["panel"],
+            highlightbackground=COLORS["line"],
+            highlightthickness=1,
+            padx=10,
+            pady=10,
+        )
+        right.grid(row=0, column=1, sticky="nsew")
+        right.columnconfigure(0, weight=1)
+        right.rowconfigure(1, weight=1)
+
+        self.status = tk.Label(
+            right,
+            text="READY",
+            bg=COLORS["panel2"],
+            fg=COLORS["muted"],
+            font=("Segoe UI", 7, "bold"),
+            padx=9,
+            pady=5,
+        )
+        self.status.grid(row=0, column=0, sticky="e", pady=(0, 8))
+
+        self.canvas = tk.Canvas(
+            right,
+            bg=COLORS["sky2"],
+            highlightthickness=0,
+            bd=0,
+        )
+        self.canvas.grid(row=1, column=0, sticky="nsew")
+        self.canvas.bind("<Configure>", lambda _event: self._draw_scene())
+
+        metrics = tk.Frame(right, bg=COLORS["panel"])
+        metrics.grid(row=2, column=0, sticky="ew", pady=(8, 0))
+        metrics.columnconfigure((0, 1, 2), weight=1)
+
+        for index in range(3):
+            cell = tk.Frame(
+                metrics,
+                bg=COLORS["panel2"],
+                highlightbackground="#1D2B37",
+                highlightthickness=1,
+                padx=9,
+                pady=8,
+            )
+            cell.grid(row=0, column=index, sticky="ew", padx=3)
+
+            name = tk.Label(
+                cell,
+                text="CHECK",
+                bg=COLORS["panel2"],
+                fg=COLORS["muted"],
+                font=("Segoe UI", 6, "bold"),
+            )
+            name.pack(anchor="w")
+
+            value = tk.Label(
+                cell,
+                text="—",
+                bg=COLORS["panel2"],
+                fg=COLORS["text"],
+                font=("Segoe UI", 10, "bold"),
+            )
+            value.pack(anchor="w", pady=(4, 0))
+
+            state = tk.Label(
+                cell,
+                text="WAITING",
+                bg=COLORS["panel2"],
+                fg=COLORS["muted"],
+                font=("Segoe UI", 6, "bold"),
+            )
+            state.pack(anchor="w", pady=(2, 0))
+
+            self.metric_labels.append((cell, name, value, state))
+
+        self._on_change()
+
+    @staticmethod
+    def _peso(value):
+        return f"₱{value:,.0f}"
+
+    @staticmethod
+    def _clamp(value, low, high):
+        return max(low, min(high, value))
+
+    def _values(self):
+        return [var.get() for var in self.vars]
+
+    def _on_change(self):
+        for label, suffix, var in self.value_labels:
+            value = var.get()
+            text = f"{value:g}{suffix}"
+            label.config(text=text)
+
+        result = self._calculate()
+        budget = self.config_data["budget"]
+        self.cost_preview.config(
+            text=f"COST  {self._peso(result['cost'])}   /   {self._peso(budget)}",
+            fg=COLORS["red"] if result["cost_ratio"] > 1 else COLORS["text"],
+        )
+        self._draw_scene()
+
+    def _calculate(self):
+        a, b, c = self._values()
+
+        if self.mode_key == "building":
+            column_mm = a
+            bracing = b / 100.0
+            floors = int(round(c))
+            height_m = floors * 3.2
+
+            lateral_demand = 260.0 * floors
+            strength_capacity = (
+                900.0
+                * (column_mm / 500.0) ** 2
+                * (1.0 + bracing * 1.4)
+            )
+            strength_ratio = lateral_demand / strength_capacity
+
+            drift_mm = (
+                14.0
+                * floors
+                / (
+                    (column_mm / 500.0) ** 3
+                    * (0.45 + bracing * 1.4)
+                )
+            )
+            drift_limit = height_m * 1000.0 / 400.0
+            drift_ratio = drift_mm / drift_limit
+
+            cost = (
+                1400000.0
+                + column_mm * floors * 350.0
+                + b * 15000.0
+            )
+            cost_ratio = cost / self.config_data["budget"]
+
+            return {
+                "checks": [
+                    ("STRENGTH", strength_ratio, f"{strength_ratio * 100:.0f}%"),
+                    ("DRIFT", drift_ratio, f"{drift_mm:.0f} / {drift_limit:.0f} mm"),
+                    ("BUDGET", cost_ratio, f"{cost_ratio * 100:.0f}%"),
+                ],
+                "cost": cost,
+                "cost_ratio": cost_ratio,
+                "governing": max(strength_ratio, drift_ratio),
+                "pass": max(strength_ratio, drift_ratio, cost_ratio) <= 1.0,
+                "floors": floors,
+            }
+
+        if self.mode_key == "wall":
+            base_m = a / 100.0
+            thickness_m = b / 100.0
+            drainage = c / 100.0
+            height_m = 6.0
+            gamma_soil = 18.0
+            ka = 0.33
+            surcharge = 20.0
+
+            soil_force = (
+                0.5 * ka * gamma_soil * height_m**2
+                + ka * surcharge * height_m
+            )
+            water_force = (
+                0.5
+                * 9.81
+                * height_m**2
+                * (1.0 - drainage)
+            )
+            lateral_force = soil_force + water_force
+
+            wall_weight = 24.0 * (
+                thickness_m * height_m
+                + base_m * 0.6
+            )
+            soil_over_heel = (
+                gamma_soil
+                * (base_m * 0.75)
+                * height_m
+            )
+            vertical = wall_weight + soil_over_heel
+
+            sliding_fs = 0.60 * vertical / max(lateral_force, 1.0)
+            overturning_moment = (
+                soil_force * height_m / 3.0
+                + water_force * height_m / 3.0
+            )
+            resisting_moment = vertical * base_m * 0.45
+            overturning_fs = resisting_moment / max(overturning_moment, 1.0)
+
+            sliding_ratio = 1.5 / max(sliding_fs, 0.01)
+            overturn_ratio = 1.5 / max(overturning_fs, 0.01)
+
+            cost = (
+                500000.0
+                + base_m * 350000.0
+                + thickness_m * 600000.0
+                + c * 2000.0
+            )
+            cost_ratio = cost / self.config_data["budget"]
+
+            return {
+                "checks": [
+                    ("SLIDING", sliding_ratio, f"FS {sliding_fs:.2f}"),
+                    ("OVERTURN", overturn_ratio, f"FS {overturning_fs:.2f}"),
+                    ("BUDGET", cost_ratio, f"{cost_ratio * 100:.0f}%"),
+                ],
+                "cost": cost,
+                "cost_ratio": cost_ratio,
+                "governing": max(sliding_ratio, overturn_ratio),
+                "pass": max(sliding_ratio, overturn_ratio, cost_ratio) <= 1.0,
+                "slide_fail": sliding_ratio > overturn_ratio,
+            }
+
+        width_m = a / 1000.0
+        thickness_m = b / 1000.0
+        improvement = c / 100.0
+        load_kn = 8000.0
+
+        area = width_m**2
+        bearing_pressure = load_kn / area
+        allowable = 220.0 * (1.0 + improvement * 1.2)
+        bearing_ratio = bearing_pressure / allowable
+
+        soil_modulus = 35000.0
+        settlement_mm = (
+            bearing_pressure
+            * width_m
+            / (
+                soil_modulus
+                * (1.0 + improvement * 1.5)
+            )
+            * 1000.0
+        )
+        settlement_limit = 25.0
+        settlement_ratio = settlement_mm / settlement_limit
+
+        volume = area * thickness_m
+        cost = (
+            1000000.0
+            + volume * 18000.0
+            + c * 25000.0
+        )
+        cost_ratio = cost / self.config_data["budget"]
+
+        return {
+            "checks": [
+                ("BEARING", bearing_ratio, f"{bearing_pressure:.0f} / {allowable:.0f} kPa"),
+                ("SETTLEMENT", settlement_ratio, f"{settlement_mm:.1f} / 25 mm"),
+                ("BUDGET", cost_ratio, f"{cost_ratio * 100:.0f}%"),
+            ],
+            "cost": cost,
+            "cost_ratio": cost_ratio,
+            "governing": max(bearing_ratio, settlement_ratio),
+            "pass": max(bearing_ratio, settlement_ratio, cost_ratio) <= 1.0,
+        }
+
+    def _draw_scene(self, progress=0.0, failed=False):
+        if not hasattr(self, "canvas") or not self.canvas.winfo_exists():
+            return
+
+        canvas = self.canvas
+        width = max(canvas.winfo_width(), 680)
+        height = max(canvas.winfo_height(), 430)
+        canvas.delete("all")
+
+        canvas.create_rectangle(0, 0, width, height, fill="#D5E4E8", outline="")
+        ground_y = height * 0.76
+        canvas.create_rectangle(
+            0,
+            ground_y,
+            width,
+            height,
+            fill="#8A765C",
+            outline="",
+        )
+
+        result = self._calculate()
+        severity = max(0.0, result["governing"] - 0.75)
+        motion = progress * self._clamp(severity, 0.15, 1.3)
+
+        if self.mode_key == "building":
+            self._draw_building(canvas, width, height, motion, failed, result)
+        elif self.mode_key == "wall":
+            self._draw_wall(canvas, width, height, motion, failed, result)
+        else:
+            self._draw_foundation(canvas, width, height, motion, failed, result)
+
+    def _draw_building(self, canvas, width, height, motion, failed, result):
+        ground_y = height * 0.76
+        floors = result["floors"]
+        tower_height = min(height * 0.58, floors * 34)
+        base_y = ground_y
+        floor_h = tower_height / floors
+        tower_w = width * 0.28
+        center = width * 0.52
+
+        sway = 0
+        if motion:
+            sway = math.sin(motion * math.pi * 3) * 24 * motion
+        if failed:
+            sway = 100 * max(motion, 0.7)
+
+        for floor in range(floors + 1):
+            y = base_y - floor * floor_h
+            ratio = floor / max(floors, 1)
+            x_shift = sway * ratio
+            x1 = center - tower_w / 2 + x_shift
+            x2 = center + tower_w / 2 + x_shift
+            canvas.create_line(x1, y, x2, y, fill="#596872", width=5)
+
+            if floor < floors:
+                next_ratio = (floor + 1) / floors
+                next_shift = sway * next_ratio
+                next_y = base_y - (floor + 1) * floor_h
+                canvas.create_line(
+                    x1,
+                    y,
+                    center - tower_w / 2 + next_shift,
+                    next_y,
+                    fill="#45545F",
+                    width=5,
+                )
+                canvas.create_line(
+                    x2,
+                    y,
+                    center + tower_w / 2 + next_shift,
+                    next_y,
+                    fill="#45545F",
+                    width=5,
+                )
+
+        canvas.create_text(
+            20,
+            20,
+            anchor="nw",
+            text="WIND + EARTHQUAKE TEST",
+            fill="#50616E",
+            font=("Segoe UI", 9, "bold"),
+        )
+
+        arrow_y = base_y - tower_height * 0.65
+        canvas.create_line(
+            width * 0.10,
+            arrow_y,
+            width * 0.34,
+            arrow_y,
+            arrow="last",
+            fill="#C4525C",
+            width=5,
+        )
+
+        if failed:
+            canvas.create_text(
+                width / 2,
+                42,
+                text="LATERAL INSTABILITY",
+                fill="#9B2833",
+                font=("Segoe UI", 12, "bold"),
+            )
+
+    def _draw_wall(self, canvas, width, height, motion, failed, result):
+        ground_y = height * 0.78
+        wall_x = width * 0.53
+        wall_h = height * 0.48
+        shift = 0
+        tip = 0
+
+        if failed:
+            if result.get("slide_fail"):
+                shift = 95 * motion
+            else:
+                tip = 70 * motion
+
+        canvas.create_polygon(
+            0,
+            ground_y - wall_h + 40,
+            wall_x,
+            ground_y - wall_h,
+            wall_x,
+            ground_y,
+            0,
+            ground_y,
+            fill="#A47F5B",
+            outline="",
+        )
+
+        base_left = wall_x - 95 + shift
+        base_right = wall_x + 105 + shift
+        top_x = wall_x + shift + tip
+
+        canvas.create_polygon(
+            base_left,
+            ground_y,
+            base_right,
+            ground_y,
+            base_right - 16,
+            ground_y + 28,
+            base_left - 18,
+            ground_y + 28,
+            fill="#7A8083",
+            outline="",
+        )
+        canvas.create_polygon(
+            wall_x - 18 + shift,
+            ground_y,
+            wall_x + 18 + shift,
+            ground_y,
+            top_x + 8,
+            ground_y - wall_h,
+            top_x - 10,
+            ground_y - wall_h,
+            fill="#9EA3A6",
+            outline="",
+        )
+
+        for index in range(4):
+            y = ground_y - wall_h * (0.2 + index * 0.2)
+            length = 45 + index * 24
+            canvas.create_line(
+                wall_x - 30 - length,
+                y,
+                wall_x - 30,
+                y,
+                arrow="last",
+                fill="#B14D55",
+                width=3,
+            )
+
+        canvas.create_text(
+            20,
+            20,
+            anchor="nw",
+            text="SOIL + WATER PRESSURE",
+            fill="#50616E",
+            font=("Segoe UI", 9, "bold"),
+        )
+
+        if failed:
+            canvas.create_text(
+                width / 2,
+                42,
+                text=(
+                    "SLIDING FAILURE"
+                    if result.get("slide_fail")
+                    else "OVERTURNING FAILURE"
+                ),
+                fill="#9B2833",
+                font=("Segoe UI", 12, "bold"),
+            )
+
+    def _draw_foundation(self, canvas, width, height, motion, failed, result):
+        ground_y = height * 0.61
+        canvas.create_rectangle(
+            0,
+            ground_y,
+            width,
+            height,
+            fill="#A88967",
+            outline="",
+        )
+
+        settle = 8 * motion
+        if failed:
+            settle = 80 * motion
+
+        center = width * 0.52
+        footing_w = width * 0.38
+        footing_y = ground_y + 72 + settle
+
+        canvas.create_rectangle(
+            center - footing_w / 2,
+            footing_y,
+            center + footing_w / 2,
+            footing_y + 40,
+            fill="#858C90",
+            outline="",
+        )
+
+        column_w = 72
+        canvas.create_rectangle(
+            center - column_w / 2,
+            ground_y - 150 + settle,
+            center + column_w / 2,
+            footing_y,
+            fill="#9DA4A8",
+            outline="",
+        )
+
+        canvas.create_rectangle(
+            center - 140,
+            ground_y - 190 + settle,
+            center + 140,
+            ground_y - 150 + settle,
+            fill="#697780",
+            outline="",
+        )
+
+        for offset in (-150, 150):
+            canvas.create_line(
+                center + offset,
+                footing_y + 10,
+                center + offset * 1.25,
+                footing_y + 100,
+                fill="#6F5642",
+                width=2,
+            )
+
+        canvas.create_text(
+            20,
+            20,
+            anchor="nw",
+            text="SOIL BEARING TEST",
+            fill="#50616E",
+            font=("Segoe UI", 9, "bold"),
+        )
+
+        if failed:
+            canvas.create_text(
+                width / 2,
+                42,
+                text="EXCESSIVE SETTLEMENT",
+                fill="#9B2833",
+                font=("Segoe UI", 12, "bold"),
+            )
+
+    def _run_test(self):
+        if self.testing:
+            return
+
+        self.testing = True
+        self.test_btn.config(state="disabled")
+        result = self._calculate()
+        self.status.config(text="TESTING", fg=COLORS["yellow"])
+
+        start = time.perf_counter()
+        duration = 2.2
+
+        def frame():
+            elapsed = time.perf_counter() - start
+            progress = min(1.0, elapsed / duration)
+
+            failed = not result["pass"] and progress > 0.68
+            self._draw_scene(progress=progress, failed=failed)
+
+            if progress < 1.0:
+                self.after(16, frame)
+            else:
+                self._finish_test(result)
+
+        frame()
+
+    def _finish_test(self, result):
+        self.testing = False
+        self.test_btn.config(state="normal")
+
+        for index, (name, ratio, display) in enumerate(result["checks"]):
+            cell, name_label, value_label, state_label = self.metric_labels[index]
+            name_label.config(text=name)
+            value_label.config(text=display)
+
+            if ratio <= 1.0:
+                color = COLORS["green"]
+                state = "PASS"
+            else:
+                color = COLORS["red"]
+                state = "FAIL"
+
+            cell.config(highlightbackground=color)
+            state_label.config(text=state, fg=color)
+
+        if result["pass"]:
+            self.status.config(text="MODE COMPLETE", fg=COLORS["green"])
+            efficiency = max(
+                0,
+                100 - int(abs(result["governing"] - 0.82) * 120),
+            )
+            score = 500 + efficiency * 4
+            self.on_complete(self.mode_key, score)
+            self._result_popup(
+                True,
+                "Mode Complete",
+                f"+{score} pts",
+            )
+        else:
+            self.status.config(text="REVISE DESIGN", fg=COLORS["red"])
+            self._result_popup(
+                False,
+                "Design Failed",
+                "Adjust the design and test again.",
+            )
+
+    def _result_popup(self, passed, title, message):
+        popup = tk.Toplevel(self)
+        popup.title(title)
+        popup.configure(bg=COLORS["panel"])
+        popup.resizable(False, False)
+        popup.transient(self)
+        popup.grab_set()
+
+        w, h = 360, 240
+        self.update_idletasks()
+        x = self.winfo_x() + max(20, (self.winfo_width() - w) // 2)
+        y = self.winfo_y() + max(20, (self.winfo_height() - h) // 2)
+        popup.geometry(f"{w}x{h}+{x}+{y}")
+
+        color = COLORS["green"] if passed else COLORS["red"]
+        tk.Label(
+            popup,
+            text="✓" if passed else "!",
+            bg=COLORS["panel2"],
+            fg=color,
+            font=("Segoe UI", 22, "bold"),
+            width=3,
+        ).pack(pady=(20, 8))
+
+        tk.Label(
+            popup,
+            text=title,
+            bg=COLORS["panel"],
+            fg=COLORS["text"],
+            font=("Segoe UI", 16, "bold"),
+        ).pack()
+
+        tk.Label(
+            popup,
+            text=message,
+            bg=COLORS["panel"],
+            fg=COLORS["muted"],
+            font=("Segoe UI", 9),
+        ).pack(pady=(5, 16))
+
+        tk.Button(
+            popup,
+            text="CONTINUE",
+            command=popup.destroy,
+            bg=COLORS["accent"] if passed else COLORS["panel2"],
+            fg="#101820" if passed else COLORS["text"],
+            activebackground="#FFC46D" if passed else COLORS["line"],
+            activeforeground="#101820" if passed else COLORS["text"],
+            relief="flat",
+            bd=0,
+            padx=18,
+            pady=8,
+            font=("Segoe UI", 8, "bold"),
+            cursor="hand2",
+        ).pack()
+
+    def _back(self):
+        if self.testing:
+            return
+        self.destroy()
+        self.master_game.after(80, self.master_game._show_mode_select)
+
 
 class BuildSafeGame(tk.Tk):
     def __init__(self):
@@ -169,6 +1066,9 @@ class BuildSafeGame(tk.Tk):
             "attempts": 3,
             "completed": [False] * len(MISSIONS),
             "best_scores": [0] * len(MISSIONS),
+            "mode_unlocked": 0,
+            "mode_completed": [False] * len(MODE_ORDER),
+            "mode_best": [0] * len(MODE_ORDER),
         }
 
     def _normalize_state(self, raw=None):
@@ -191,6 +1091,21 @@ class BuildSafeGame(tk.Tk):
         state["best_scores"] = (
             list(state.get("best_scores", [])) + [0] * len(MISSIONS)
         )[: len(MISSIONS)]
+        state["mode_unlocked"] = max(
+            0,
+            min(
+                int(state.get("mode_unlocked", 0)),
+                len(MODE_ORDER) - 1,
+            ),
+        )
+        state["mode_completed"] = (
+            list(state.get("mode_completed", []))
+            + [False] * len(MODE_ORDER)
+        )[: len(MODE_ORDER)]
+        state["mode_best"] = (
+            list(state.get("mode_best", []))
+            + [0] * len(MODE_ORDER)
+        )[: len(MODE_ORDER)]
         return state
 
     def _load_players(self):
@@ -1295,16 +2210,10 @@ class BuildSafeGame(tk.Tk):
             font=("Segoe UI", 8),
         ).pack(pady=(0, 21))
 
-        primary_text = (
-            "CONTINUE"
-            if completed or self.state["score"]
-            else "START GAME"
-        )
-
         tk.Button(
             card,
-            text=f"▶   {primary_text}",
-            command=self._start_from_menu,
+            text="▶   PLAY",
+            command=self._show_mode_select,
             bg=COLORS["accent"],
             fg="#101820",
             activebackground="#FFC46D",
@@ -1317,9 +2226,9 @@ class BuildSafeGame(tk.Tk):
         ).pack(fill="x", pady=5)
 
         for text, command in [
-            ("PROJECTS", self._show_campaign_modal),
+            ("GAME MODES", self._show_mode_select),
+            ("BRIDGE PROJECTS", self._show_campaign_modal),
             ("HOW TO PLAY", self._show_help_modal),
-            ("ENGINEERING DETAILS", self._show_details_modal),
         ]:
             tk.Button(
                 card,
@@ -1359,9 +2268,196 @@ class BuildSafeGame(tk.Tk):
             font=("Segoe UI", 7),
         ).pack(side="bottom")
 
-    def _start_from_menu(self):
+    def _show_mode_select(self):
+        if not self.current_player or self.testing:
+            return
+
+        self._save_state()
         self._destroy_overlay()
-        self.after(120, self._show_mission_modal)
+        self.active_overlay = self._overlay()
+
+        card = tk.Frame(
+            self.active_overlay,
+            bg=COLORS["panel"],
+            highlightbackground=COLORS["line"],
+            highlightthickness=1,
+            padx=30,
+            pady=25,
+        )
+        card.place(
+            relx=0.5,
+            rely=0.5,
+            anchor="center",
+            width=650,
+            height=610,
+        )
+
+        tk.Label(
+            card,
+            text="CAREER MODES",
+            bg=COLORS["panel"],
+            fg=COLORS["accent"],
+            font=("Segoe UI", 8, "bold"),
+        ).pack()
+
+        tk.Label(
+            card,
+            text="Choose a Discipline",
+            bg=COLORS["panel"],
+            fg=COLORS["text"],
+            font=("Segoe UI", 21, "bold"),
+        ).pack(pady=(4, 3))
+
+        tk.Label(
+            card,
+            text="Complete a mode to unlock the next, harder challenge.",
+            bg=COLORS["panel"],
+            fg=COLORS["muted"],
+            font=("Segoe UI", 8),
+        ).pack(pady=(0, 18))
+
+        for index, mode_key in enumerate(MODE_ORDER):
+            mode = GAME_MODES[mode_key]
+            unlocked = index <= self.state["mode_unlocked"]
+            completed = self.state["mode_completed"][index]
+
+            row = tk.Frame(
+                card,
+                bg=COLORS["panel2"],
+                highlightbackground=(
+                    COLORS["green"] if completed else "#1D2B37"
+                ),
+                highlightthickness=1,
+                padx=12,
+                pady=10,
+            )
+            row.pack(fill="x", pady=4)
+
+            tk.Label(
+                row,
+                text=mode["badge"],
+                bg=(
+                    COLORS["accent"]
+                    if unlocked
+                    else "#24323D"
+                ),
+                fg=(
+                    "#101820"
+                    if unlocked
+                    else "#607382"
+                ),
+                font=("Segoe UI", 10, "bold"),
+                width=4,
+                height=2,
+            ).pack(side="left")
+
+            info = tk.Frame(row, bg=COLORS["panel2"])
+            info.pack(side="left", fill="x", expand=True, padx=11)
+
+            tk.Label(
+                info,
+                text=mode["name"],
+                bg=COLORS["panel2"],
+                fg=(
+                    COLORS["text"]
+                    if unlocked
+                    else "#637786"
+                ),
+                font=("Segoe UI", 10, "bold"),
+            ).pack(anchor="w")
+
+            tk.Label(
+                info,
+                text=f'{mode["difficulty"]}  ·  {mode["subtitle"]}',
+                bg=COLORS["panel2"],
+                fg=COLORS["muted"],
+                font=("Segoe UI", 7),
+            ).pack(anchor="w", pady=(2, 0))
+
+            state_text = (
+                "✓ COMPLETE"
+                if completed
+                else ("PLAY  ›" if unlocked else "LOCKED")
+            )
+
+            tk.Button(
+                row,
+                text=state_text,
+                command=(
+                    lambda key=mode_key: self._launch_mode(key)
+                ),
+                state="normal" if unlocked else "disabled",
+                bg=COLORS["panel2"],
+                fg=(
+                    COLORS["green"]
+                    if completed
+                    else COLORS["accent"]
+                ),
+                disabledforeground="#465966",
+                activebackground=COLORS["line"],
+                activeforeground=COLORS["text"],
+                relief="flat",
+                bd=0,
+                padx=10,
+                pady=8,
+                font=("Segoe UI", 7, "bold"),
+                cursor="hand2" if unlocked else "",
+            ).pack(side="right")
+
+        tk.Button(
+            card,
+            text="BACK TO MENU",
+            command=self._show_main_menu,
+            bg=COLORS["panel2"],
+            fg=COLORS["muted"],
+            activebackground=COLORS["line"],
+            activeforeground=COLORS["text"],
+            relief="flat",
+            bd=0,
+            pady=9,
+            font=("Segoe UI", 8, "bold"),
+            cursor="hand2",
+        ).pack(fill="x", pady=(14, 0))
+
+    def _launch_mode(self, mode_key):
+        index = MODE_ORDER.index(mode_key)
+        if index > self.state["mode_unlocked"]:
+            return
+
+        self._destroy_overlay()
+
+        if mode_key == "bridge":
+            self.after(100, self._show_mission_modal)
+            return
+
+        EngineeringModeWindow(
+            self,
+            mode_key,
+            self._complete_mode,
+        )
+
+    def _complete_mode(self, mode_key, score):
+        index = MODE_ORDER.index(mode_key)
+        first_completion = not self.state["mode_completed"][index]
+
+        self.state["mode_completed"][index] = True
+        self.state["mode_best"][index] = max(
+            self.state["mode_best"][index],
+            score,
+        )
+
+        if first_completion:
+            self.state["score"] += score
+            self.state["xp"] += max(150, score // 4)
+
+        if index < len(MODE_ORDER) - 1:
+            self.state["mode_unlocked"] = max(
+                self.state["mode_unlocked"],
+                index + 1,
+            )
+
+        self._save_state()
+        self._render_header_only()
 
     # ---------- calculations ----------
 
@@ -2302,6 +3398,18 @@ class BuildSafeGame(tk.Tk):
         xp_gain = round(110 + mission_score * 0.22)
 
         index = self.state["mission_index"]
+
+        if not self.state["mode_completed"][0]:
+            self.state["mode_completed"][0] = True
+            self.state["mode_unlocked"] = max(
+                self.state["mode_unlocked"],
+                1,
+            )
+
+        self.state["mode_best"][0] = max(
+            self.state["mode_best"][0],
+            mission_score,
+        )
         self.state["score"] += mission_score
         self.state["xp"] += xp_gain
         self.state["best_scores"][index] = max(
