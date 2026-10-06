@@ -3217,8 +3217,8 @@ class BuildSafeGame(tk.Tk):
 
         self.testing = True
         self.test_button.config(state="disabled")
-        self.last_result = self._calculate()
         self._reset_result_cards()
+        self.last_result = self._calculate()
 
         result = self.last_result
         structural_fail = (
