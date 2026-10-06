@@ -1,26 +1,42 @@
 # BuildSafe: Bridge Load Challenge
 
-A Civil Engineering educational game focused on simplified beam design, structural safety, deflection, and cost efficiency.
+BuildSafe is a production-style **Civil Engineering educational game** where players design and load-test simplified bridge girders while balancing structural safety, serviceability, material use, and project budget.
 
-## Included versions
+## Game Features
 
-- `bridge_load_challenge.py` — required **Python + Tkinter** desktop application.
-- `index.html` — lightweight browser demo for Vercel deployment.
-- `PROJECT_PROPOSAL.md` — project proposal, GUI layout, user flow, and engineering model.
+- 6-mission Civil Engineering campaign
+- Progressive difficulty from Rookie to Expert
+- Structural Steel, Engineered Timber, and Aluminum
+- Adjustable girder width, depth, and girder count
+- Animated truck load testing
+- Live structural utilization meter
+- Bending stress and L/360 deflection checks
+- Project budget constraint
+- Attempts, mission scores, XP, player levels, and engineer rating
+- Saved campaign progress in the browser
+- Responsive production-style game interface
 
-## Engineering model
+## Included Versions
 
-The game models a simply supported rectangular beam with a point load at midspan using:
+- `index.html` + `styles.css` + `game.js` — web game deployed through Vercel
+- `bridge_load_challenge.py` — required **Python + Tkinter** academic desktop application
+- `PROJECT_PROPOSAL.md` — project proposal, GUI layout, user flow, and engineering model
+
+## Simplified Engineering Model
+
+The game uses a simply supported rectangular girder with a point load at midspan:
 
 - `M = PL / 4`
-- `I = bh^3 / 12`
+- `I = bh³ / 12`
 - `σ = Mc / I`
-- `δ = PL^3 / (48EI)`
-- Deflection limit: `L / 360`
+- `δ = PL³ / (48EI)`
+- Serviceability limit: `L / 360`
 
-> Educational use only. These simplified values and cost factors must not be used for real structural design or construction.
+The mission load is shared equally by the selected parallel girders.
 
-## Run the Tkinter version
+> **Educational use only.** The simplified loads, material properties, cost factors, and structural model are for classroom/game use and must not be used for real construction or engineering decisions.
+
+## Run the Tkinter Version
 
 ```bash
 python bridge_load_challenge.py
@@ -28,6 +44,6 @@ python bridge_load_challenge.py
 
 Python 3 with Tkinter is required.
 
-## Web demo
+## Deployment
 
-The repository root contains `index.html`, so Vercel can deploy it as a static site with no build command.
+The repository is connected to Vercel. Pushing changes to the production branch automatically triggers a new deployment.
