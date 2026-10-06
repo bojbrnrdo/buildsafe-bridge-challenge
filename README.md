@@ -10,9 +10,9 @@ The required application is:
 
 It uses Python's built-in **Tkinter** GUI toolkit and includes:
 
-- Local player account system with Login / Create Account
-- Salted PBKDF2 password hashing (no plain-text passwords)
-- Player-specific score, XP, missions, and saved progress
+- Game-style local player profiles: Create Player / Choose Player
+- Multiple player slots with separate saved progress
+- Player badge, score, XP, unlocked missions, and best scores
 - Main menu before gameplay
 - Minimalist game HUD
 - Mission brief popups
