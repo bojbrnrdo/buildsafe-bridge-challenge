@@ -146,6 +146,11 @@
     girderPath: $("girderPath"),
     girderLines: $("girderLines"),
     crackGroup: $("crackGroup"),
+    debrisGroup: $("debrisGroup"),
+    splashGroup: $("splashGroup"),
+    failureFlash: $("failureFlash"),
+    failureFlashText: $("failureFlashText"),
+    barrierPath: $("barrierPath"),
     truck: $("truck"),
     loadArrow: $("loadArrow"),
     loadArrowText: $("loadArrowText"),
@@ -543,6 +548,13 @@
     setStatus("Ready to test", "");
     els.sceneLoadCase.textContent = "Service condition";
     els.crackGroup.hidden = true;
+    els.debrisGroup.hidden = true;
+    els.debrisGroup.classList.remove("active");
+    els.splashGroup.hidden = true;
+    els.splashGroup.classList.remove("active");
+    els.failureFlash.hidden = true;
+    els.arena.classList.remove("warning-state", "collapse-state", "fail-shake");
+    restoreBridgeGeometry();
     setBridgeSag(0, false);
     els.truck.setAttribute("transform", "translate(83 220)");
     els.loadArrow.classList.remove("active");
@@ -605,11 +617,23 @@
     els.simStatus.querySelector("span").textContent = text;
   }
 
+  function restoreBridgeGeometry() {
+    els.deckPath.setAttribute("d", "M145 282 Q500 282 855 282");
+    els.roadPath.setAttribute("d", "M145 275 Q500 275 855 275");
+    els.girderPath.setAttribute("d", "M156 304 Q500 304 844 304");
+    els.barrierPath.setAttribute("d", "M150 265 Q500 265 850 265");
+    els.girderPath.style.stroke = "#53616a";
+    els.deckPath.style.stroke = "#b9b9b4";
+    els.roadPath.style.stroke = "url(#roadGradient)";
+    els.barrierPath.style.stroke = "#d4d8d9";
+  }
+
   function setBridgeSag(ratio, failed) {
-    const visibleSag = clamp(ratio, 0, 1.35) * 22;
+    const visibleSag = clamp(ratio, 0, 1.35) * 24;
     const deckMid = 282 + visibleSag;
     const roadMid = 275 + visibleSag;
     const girderMid = 304 + visibleSag;
+    const barrierMid = 265 + visibleSag;
 
     els.deckPath.setAttribute(
       "d",
@@ -623,12 +647,49 @@
       "d",
       "M156 304 Q500 " + girderMid.toFixed(1) + " 844 304"
     );
+    els.barrierPath.setAttribute(
+      "d",
+      "M150 265 Q500 " + barrierMid.toFixed(1) + " 850 265"
+    );
 
+    const nearLimit = ratio > 0.9 && ratio <= 1;
     els.girderPath.style.stroke = failed
       ? "#b44249"
-      : ratio > 0.9
+      : nearLimit
         ? "#9b7f40"
         : "#53616a";
+    els.deckPath.style.stroke = failed ? "#c45a60" : "#b9b9b4";
+  }
+
+  function setBrokenBridge(drop, gap) {
+    const leftDeckEnd = 500 - gap / 2;
+    const rightDeckStart = 500 + gap / 2;
+    const leftGirderEnd = 500 - gap / 2 - 4;
+    const rightGirderStart = 500 + gap / 2 + 4;
+
+    els.deckPath.setAttribute(
+      "d",
+      "M145 282 Q330 282 " + leftDeckEnd.toFixed(1) + " " + (282 + drop).toFixed(1) +
+      " M" + rightDeckStart.toFixed(1) + " " + (282 + drop * 0.9).toFixed(1) + " Q680 282 855 282"
+    );
+    els.roadPath.setAttribute(
+      "d",
+      "M145 275 Q330 275 " + leftDeckEnd.toFixed(1) + " " + (275 + drop).toFixed(1) +
+      " M" + rightDeckStart.toFixed(1) + " " + (275 + drop * 0.9).toFixed(1) + " Q680 275 855 275"
+    );
+    els.girderPath.setAttribute(
+      "d",
+      "M156 304 Q335 304 " + leftGirderEnd.toFixed(1) + " " + (304 + drop * 1.05).toFixed(1) +
+      " M" + rightGirderStart.toFixed(1) + " " + (304 + drop).toFixed(1) + " Q680 304 844 304"
+    );
+    els.barrierPath.setAttribute(
+      "d",
+      "M150 265 Q335 265 " + leftDeckEnd.toFixed(1) + " " + (265 + drop * 0.86).toFixed(1) +
+      " M" + rightDeckStart.toFixed(1) + " " + (265 + drop * 0.8).toFixed(1) + " Q680 265 850 265"
+    );
+    els.girderPath.style.stroke = "#9f3941";
+    els.deckPath.style.stroke = "#a94c53";
+    els.barrierPath.style.stroke = "#b1b7b9";
   }
 
   function ratioClass(ratio) {
@@ -674,35 +735,135 @@
     } catch {}
   }
 
-  async function animateTruck(result, duration) {
+  async function animateTruck(result, duration, endProgress = 1) {
     const start = performance.now();
+    const nearLimit =
+      result.governingRatio > 0.9 && result.governingRatio <= 1;
 
     await new Promise((resolve) => {
       function frame(now) {
-        const p = clamp((now - start) / duration, 0, 1);
+        const t = clamp((now - start) / duration, 0, 1);
+        const p = t * endProgress;
         const x = 83 + p * 730;
-        els.truck.setAttribute(
-          "transform",
-          "translate(" + x.toFixed(1) + " 220)"
-        );
-
         const positionEffect = Math.sin(Math.PI * p);
         const totalRatio =
           result.deflectionRatio * 0.25 +
           result.governingRatio * 0.75;
-        setBridgeSag(totalRatio * positionEffect, false);
+        const liveSag = totalRatio * positionEffect;
+        const truckY = 220 + clamp(liveSag, 0, 1.2) * 15;
 
-        if (p > 0.42 && p < 0.58) {
+        els.truck.setAttribute(
+          "transform",
+          "translate(" + x.toFixed(1) + " " + truckY.toFixed(1) + ")"
+        );
+
+        setBridgeSag(liveSag, false);
+
+        if (nearLimit && p > 0.38 && p < 0.64) {
+          els.arena.classList.add("warning-state");
+        } else {
+          els.arena.classList.remove("warning-state");
+        }
+
+        if (p > 0.42 && p < 0.60) {
           els.loadArrow.classList.add("active");
         } else {
           els.loadArrow.classList.remove("active");
         }
 
-        if (p < 1) requestAnimationFrame(frame);
+        if (t < 1) requestAnimationFrame(frame);
         else resolve();
       }
       requestAnimationFrame(frame);
     });
+
+    els.arena.classList.remove("warning-state");
+  }
+
+  async function animateStructuralFailure(result, reduced) {
+    const structuralRatio = Math.max(
+      result.strengthRatio,
+      result.deflectionRatio
+    );
+    const catastrophic =
+      result.strengthRatio > 1.18 ||
+      result.deflectionRatio > 1.3 ||
+      structuralRatio > 1.32;
+
+    els.crackGroup.hidden = false;
+    els.failureFlash.hidden = false;
+    els.failureFlashText.textContent =
+      result.strengthRatio >= result.deflectionRatio
+        ? "GIRDER OVERSTRESS AT MIDSPAN"
+        : "EXCESSIVE MIDSPAN DEFLECTION";
+
+    setStatus("Critical structural response", "fail");
+    els.arena.classList.add("warning-state");
+    tone(190, 0.12, 0.055);
+    await sleep(reduced ? 120 : 520);
+
+    els.arena.classList.remove("warning-state");
+    els.arena.classList.add("collapse-state");
+    els.debrisGroup.hidden = false;
+    els.debrisGroup.classList.add("active");
+
+    const duration = reduced ? 260 : catastrophic ? 1150 : 820;
+    const start = performance.now();
+    const truckX = 83 + 0.52 * 730;
+
+    await new Promise((resolve) => {
+      function frame(now) {
+        const t = clamp((now - start) / duration, 0, 1);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const maxDrop = catastrophic ? 118 : 48;
+        const maxGap = catastrophic ? 68 : 24;
+        const drop = maxDrop * eased;
+        const gap = maxGap * eased;
+
+        setBrokenBridge(drop, gap);
+
+        if (catastrophic) {
+          const truckDrop =
+            drop * 0.95 + Math.max(0, t - 0.42) * 105;
+          const angle = 2 + eased * 17;
+          els.truck.setAttribute(
+            "transform",
+            "translate(" +
+              truckX.toFixed(1) +
+              " " +
+              (226 + truckDrop).toFixed(1) +
+              ") rotate(" +
+              angle.toFixed(1) +
+              " 52 42)"
+          );
+        } else {
+          els.truck.setAttribute(
+            "transform",
+            "translate(" +
+              truckX.toFixed(1) +
+              " " +
+              (226 + drop * 0.55).toFixed(1) +
+              ") rotate(4 52 42)"
+          );
+        }
+
+        if (t < 1) requestAnimationFrame(frame);
+        else resolve();
+      }
+      requestAnimationFrame(frame);
+    });
+
+    if (catastrophic) {
+      els.splashGroup.hidden = false;
+      els.splashGroup.classList.add("active");
+      tone(105, 0.22, 0.07);
+      await sleep(reduced ? 80 : 300);
+    } else {
+      tone(125, 0.18, 0.06);
+    }
+
+    await sleep(reduced ? 80 : 350);
+    els.failureFlash.hidden = true;
   }
 
   async function runLoadTest() {
@@ -728,7 +889,19 @@
     els.sceneLoadCase.textContent = "Stage 2 · Dynamic vehicle load";
     setTimeline("vehicle");
     tone(380, 0.06);
-    await animateTruck(result, reduced ? 450 : 2800);
+
+    const structuralFail =
+      result.strengthRatio > 1 || result.deflectionRatio > 1;
+
+    await animateTruck(
+      result,
+      reduced ? 450 : structuralFail ? 1900 : 2800,
+      structuralFail ? 0.52 : 1
+    );
+
+    if (structuralFail) {
+      await animateStructuralFailure(result, reduced);
+    }
 
     setStatus("Engineering inspection", "testing");
     els.sceneLoadCase.textContent = "Stage 3 · Inspection";
@@ -878,8 +1051,17 @@
     els.sceneLoadCase.textContent = "Inspection complete · FAIL";
     els.overallResult.textContent = "Revise design";
     els.overallResult.className = "overall-result fail";
-    els.crackGroup.hidden = r.strengthRatio <= 1 && r.deflectionRatio <= 1;
-    setBridgeSag(r.governingRatio, true);
+    const structuralFailure =
+      r.strengthRatio > 1 || r.deflectionRatio > 1;
+
+    els.crackGroup.hidden = !structuralFailure;
+
+    if (!structuralFailure) {
+      restoreBridgeGeometry();
+      setBridgeSag(Math.min(r.governingRatio, 0.9), false);
+      els.truck.setAttribute("transform", "translate(813 220)");
+    }
+
     els.arena.classList.add("fail-shake");
     setTimeout(() => els.arena.classList.remove("fail-shake"), 750);
 
