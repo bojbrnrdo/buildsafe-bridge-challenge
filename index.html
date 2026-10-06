@@ -205,6 +205,10 @@
           <div class="scene" id="arena">
             <div class="scene-label top-left"><span>SIMULATION</span><strong id="sceneLoadCase">Service condition</strong></div>
             <div class="weather" aria-hidden="true"><span>☁</span><small>Dry · 24°C</small></div>
+            <div class="failure-flash" id="failureFlash" hidden>
+              <span>STRUCTURAL FAILURE</span>
+              <strong id="failureFlashText">MIDSPAN GIRDER FAILURE</strong>
+            </div>
 
             <svg class="bridge-scene" viewBox="0 0 1000 500" role="img" aria-label="Side view of a two-lane girder bridge during a vehicle load test">
               <defs>
@@ -243,7 +247,7 @@
                 <path id="girderPath" class="main-girder" d="M156 304 Q500 304 844 304"/>
                 <path id="deckPath" class="road-deck" d="M145 282 Q500 282 855 282"/>
                 <path id="roadPath" class="road-surface" d="M145 275 Q500 275 855 275"/>
-                <path class="barrier" d="M150 265 Q500 265 850 265"/>
+                <path id="barrierPath" class="barrier" d="M150 265 Q500 265 850 265"/>
                 <g class="lane-marks">
                   <path d="M190 273 L245 273 M290 273 L345 273 M390 273 L445 273 M490 273 L545 273 M590 273 L645 273 M690 273 L745 273 M790 273 L830 273"/>
                 </g>
@@ -251,8 +255,23 @@
                 <g id="girderLines" class="girder-lines"></g>
 
                 <g id="crackGroup" class="cracks" hidden>
-                  <path d="M490 287 l9 10 l-7 9 l13 12 l-9 12"/>
-                  <path d="M520 289 l-7 11 l8 9 l-10 12"/>
+                  <path d="M478 286 l10 11 l-8 10 l14 14 l-10 15"/>
+                  <path d="M514 287 l-8 12 l10 11 l-12 14"/>
+                  <path d="M497 304 l8 8 l-7 10"/>
+                </g>
+
+                <g id="debrisGroup" class="debris" hidden aria-hidden="true">
+                  <rect x="470" y="296" width="22" height="8" rx="2"/>
+                  <rect x="498" y="302" width="18" height="7" rx="2"/>
+                  <rect x="520" y="294" width="25" height="8" rx="2"/>
+                  <rect x="487" y="316" width="14" height="6" rx="2"/>
+                  <circle cx="535" cy="318" r="5"/>
+                </g>
+
+                <g id="splashGroup" class="splash" hidden aria-hidden="true">
+                  <ellipse cx="514" cy="394" rx="20" ry="5"/>
+                  <ellipse cx="514" cy="394" rx="10" ry="3"/>
+                  <path d="M500 391 q7 -22 14 0 q8 -28 16 0"/>
                 </g>
               </g>
 
