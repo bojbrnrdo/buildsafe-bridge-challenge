@@ -37,6 +37,43 @@ python bridge_load_challenge.py
 
 Tkinter is included with most standard Python desktop installations.
 
+## Progressive Civil Engineering Modes
+
+BuildSafe is no longer bridge-only. Career progression now unlocks harder disciplines:
+
+1. **Bridge Design — Starter**
+   - Moving vehicle load
+   - Bending stress
+   - Deflection
+   - Cost control
+   - Failure: sag, cracking, bridge collapse
+
+2. **Building Stability — Intermediate**
+   - Multi-storey frame
+   - Wind / earthquake lateral demand
+   - Column strength
+   - Storey drift
+   - Bracing and cost
+   - Failure: excessive sway / lateral instability
+
+3. **Retaining Wall — Advanced**
+   - Soil and water pressure
+   - Drainage
+   - Sliding factor of safety
+   - Overturning factor of safety
+   - Cost
+   - Failure: wall sliding or overturning
+
+4. **Foundation Design — Expert**
+   - Footing dimensions
+   - Soil bearing pressure
+   - Settlement
+   - Soil improvement
+   - Cost
+   - Failure: excessive foundation settlement
+
+Completing each discipline unlocks the next harder mode. Every player profile keeps its own mode unlocks and best scores.
+
 ## Simplified Engineering Model
 
 The game includes:
