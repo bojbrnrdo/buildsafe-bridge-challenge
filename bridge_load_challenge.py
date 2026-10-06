@@ -1,5 +1,7 @@
+import hashlib
 import json
 import math
+import secrets
 import time
 import tkinter as tk
 from pathlib import Path
@@ -121,6 +123,7 @@ PRESETS = {
 }
 
 SAVE_FILE = Path(__file__).with_name("buildsafe_save.json")
+USERS_FILE = Path(__file__).with_name("buildsafe_users.json")
 
 
 class BuildSafeGame(tk.Tk):
@@ -131,7 +134,9 @@ class BuildSafeGame(tk.Tk):
         self.minsize(1040, 680)
         self.configure(bg=COLORS["bg"])
 
-        self.state = self._load_state()
+        self.current_user = None
+        self.users = self._load_users()
+        self.state = self._default_state()
         self.testing = False
         self.last_result = None
 
@@ -145,7 +150,7 @@ class BuildSafeGame(tk.Tk):
         self._apply_suggested(show_notice=False)
         self._render_all()
 
-        self.after(250, self._show_mission_modal)
+        self.after(180, self._show_login_screen)
 
     # ---------- persistence ----------
 
@@ -160,15 +165,10 @@ class BuildSafeGame(tk.Tk):
             "best_scores": [0] * len(MISSIONS),
         }
 
-    def _load_state(self):
+    def _normalize_state(self, raw=None):
         state = self._default_state()
-        try:
-            if SAVE_FILE.exists():
-                loaded = json.loads(SAVE_FILE.read_text(encoding="utf-8"))
-                if isinstance(loaded, dict):
-                    state.update(loaded)
-        except Exception:
-            pass
+        if isinstance(raw, dict):
+            state.update(raw)
 
         state["mission_index"] = max(
             0, min(int(state.get("mission_index", 0)), len(MISSIONS) - 1)
@@ -176,6 +176,9 @@ class BuildSafeGame(tk.Tk):
         state["unlocked"] = max(
             0, min(int(state.get("unlocked", 0)), len(MISSIONS) - 1)
         )
+        state["score"] = max(0, int(state.get("score", 0)))
+        state["xp"] = max(0, int(state.get("xp", 0)))
+        state["attempts"] = max(0, min(int(state.get("attempts", 3)), 3))
         state["completed"] = (
             list(state.get("completed", [])) + [False] * len(MISSIONS)
         )[: len(MISSIONS)]
@@ -184,11 +187,56 @@ class BuildSafeGame(tk.Tk):
         )[: len(MISSIONS)]
         return state
 
-    def _save_state(self):
+    def _load_users(self):
         try:
-            SAVE_FILE.write_text(json.dumps(self.state, indent=2), encoding="utf-8")
+            if USERS_FILE.exists():
+                data = json.loads(USERS_FILE.read_text(encoding="utf-8"))
+                if isinstance(data, dict) and isinstance(data.get("users"), dict):
+                    return data
         except Exception:
             pass
+        return {"users": {}}
+
+    def _save_users(self):
+        try:
+            USERS_FILE.write_text(
+                json.dumps(self.users, indent=2),
+                encoding="utf-8",
+            )
+        except Exception as exc:
+            messagebox.showerror(
+                "Save Error",
+                f"Could not save local profile data.\n\n{exc}",
+                parent=self,
+            )
+
+    @staticmethod
+    def _password_hash(password, salt_hex=None):
+        salt = bytes.fromhex(salt_hex) if salt_hex else secrets.token_bytes(16)
+        digest = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            salt,
+            180000,
+        )
+        return salt.hex(), digest.hex()
+
+    def _verify_password(self, password, account):
+        try:
+            _, digest = self._password_hash(password, account["salt"])
+            return secrets.compare_digest(digest, account["password_hash"])
+        except Exception:
+            return False
+
+    def _save_state(self):
+        if not self.current_user:
+            return
+        account = self.users["users"].get(self.current_user)
+        if not account:
+            return
+        account["progress"] = self._normalize_state(self.state)
+        account["last_played"] = int(time.time())
+        self._save_users()
 
     # ---------- UI ----------
 
@@ -265,6 +313,22 @@ class BuildSafeGame(tk.Tk):
 
         self.level_label = self._hud_box(right, "LVL", "1")
         self.score_label = self._hud_box(right, "SCORE", "0")
+
+        self.menu_btn = tk.Button(
+            right,
+            text="MENU",
+            command=self._show_main_menu,
+            bg=COLORS["panel2"],
+            fg=COLORS["text"],
+            activebackground=COLORS["line"],
+            activeforeground=COLORS["text"],
+            relief="flat",
+            bd=0,
+            padx=9,
+            font=("Segoe UI", 7, "bold"),
+            cursor="hand2",
+        )
+        self.menu_btn.pack(side="left", padx=(6, 0), ipady=8)
 
         self.help_btn = tk.Button(
             right,
@@ -763,6 +827,386 @@ class BuildSafeGame(tk.Tk):
 
     def _bind_controls(self):
         self.material_var.trace_add("write", lambda *_: self._on_control_change())
+
+
+    # ---------- account + menu flow ----------
+
+    def _overlay(self):
+        frame = tk.Frame(self, bg="#081018")
+        frame.place(relx=0, rely=0, relwidth=1, relheight=1)
+        frame.lift()
+        return frame
+
+    def _show_login_screen(self):
+        if hasattr(self, "active_overlay") and self.active_overlay.winfo_exists():
+            self.active_overlay.destroy()
+
+        self.active_overlay = self._overlay()
+
+        card = tk.Frame(
+            self.active_overlay,
+            bg=COLORS["panel"],
+            highlightbackground=COLORS["line"],
+            highlightthickness=1,
+            padx=34,
+            pady=30,
+        )
+        card.place(relx=0.5, rely=0.5, anchor="center", width=420, height=500)
+
+        tk.Label(
+            card,
+            text="BS",
+            bg=COLORS["accent"],
+            fg="#111820",
+            font=("Segoe UI", 18, "bold"),
+            width=3,
+            height=2,
+        ).pack()
+
+        tk.Label(
+            card,
+            text="BuildSafe",
+            bg=COLORS["panel"],
+            fg=COLORS["text"],
+            font=("Segoe UI", 22, "bold"),
+        ).pack(pady=(12, 0))
+
+        tk.Label(
+            card,
+            text="BRIDGE ENGINEERING GAME",
+            bg=COLORS["panel"],
+            fg=COLORS["muted"],
+            font=("Segoe UI", 8, "bold"),
+        ).pack(pady=(2, 24))
+
+        self.login_username = tk.StringVar()
+        self.login_password = tk.StringVar()
+
+        self._auth_field(card, "USERNAME", self.login_username)
+        self._auth_field(card, "PASSWORD", self.login_password, password=True)
+
+        self.auth_message = tk.Label(
+            card,
+            text="",
+            bg=COLORS["panel"],
+            fg=COLORS["red"],
+            font=("Segoe UI", 8),
+        )
+        self.auth_message.pack(fill="x", pady=(7, 0))
+
+        tk.Button(
+            card,
+            text="LOGIN",
+            command=self._login,
+            bg=COLORS["accent"],
+            fg="#101820",
+            activebackground="#FFC46D",
+            activeforeground="#101820",
+            relief="flat",
+            bd=0,
+            pady=11,
+            font=("Segoe UI", 9, "bold"),
+            cursor="hand2",
+        ).pack(fill="x", pady=(14, 7))
+
+        tk.Button(
+            card,
+            text="CREATE ACCOUNT",
+            command=self._show_register_screen,
+            bg=COLORS["panel2"],
+            fg=COLORS["text"],
+            activebackground=COLORS["line"],
+            activeforeground=COLORS["text"],
+            relief="flat",
+            bd=0,
+            pady=10,
+            font=("Segoe UI", 8, "bold"),
+            cursor="hand2",
+        ).pack(fill="x")
+
+        tk.Label(
+            card,
+            text="Profiles are stored locally on this computer.",
+            bg=COLORS["panel"],
+            fg="#5E7180",
+            font=("Segoe UI", 7),
+        ).pack(side="bottom")
+
+        card.bind_all("<Return>", lambda _event: self._login())
+        self.after(100, lambda: self._focus_first_entry(card))
+
+    def _focus_first_entry(self, container):
+        for child in container.winfo_children():
+            if isinstance(child, tk.Entry):
+                child.focus_set()
+                break
+
+    def _auth_field(self, parent, label, variable, password=False):
+        tk.Label(
+            parent,
+            text=label,
+            bg=COLORS["panel"],
+            fg=COLORS["muted"],
+            font=("Segoe UI", 7, "bold"),
+        ).pack(anchor="w", pady=(4, 4))
+
+        entry = tk.Entry(
+            parent,
+            textvariable=variable,
+            show="•" if password else "",
+            bg=COLORS["panel2"],
+            fg=COLORS["text"],
+            insertbackground=COLORS["text"],
+            relief="flat",
+            bd=0,
+            highlightbackground=COLORS["line"],
+            highlightcolor=COLORS["accent"],
+            highlightthickness=1,
+            font=("Segoe UI", 11),
+        )
+        entry.pack(fill="x", ipady=9, pady=(0, 9))
+        return entry
+
+    def _show_register_screen(self):
+        modal = self._modal("Create Account", 450, 465)
+
+        self._modal_heading(modal, "NEW PROFILE", "Create Account")
+
+        username = tk.StringVar()
+        password = tk.StringVar()
+        confirm = tk.StringVar()
+
+        form = tk.Frame(modal, bg=COLORS["panel"])
+        form.pack(fill="both", expand=True, padx=28, pady=(12, 4))
+
+        self._auth_field(form, "USERNAME", username)
+        self._auth_field(form, "PASSWORD", password, password=True)
+        self._auth_field(form, "CONFIRM PASSWORD", confirm, password=True)
+
+        message = tk.Label(
+            form,
+            text="",
+            bg=COLORS["panel"],
+            fg=COLORS["red"],
+            font=("Segoe UI", 8),
+        )
+        message.pack(fill="x")
+
+        def create():
+            raw_name = username.get().strip()
+            key = raw_name.lower()
+            pw = password.get()
+
+            if not (3 <= len(raw_name) <= 18):
+                message.config(text="Username must be 3–18 characters.")
+                return
+            if not all(ch.isalnum() or ch == "_" for ch in raw_name):
+                message.config(text="Use letters, numbers, or underscore only.")
+                return
+            if key in self.users["users"]:
+                message.config(text="That username already exists.")
+                return
+            if len(pw) < 6:
+                message.config(text="Password must be at least 6 characters.")
+                return
+            if pw != confirm.get():
+                message.config(text="Passwords do not match.")
+                return
+
+            salt, digest = self._password_hash(pw)
+            self.users["users"][key] = {
+                "display_name": raw_name,
+                "salt": salt,
+                "password_hash": digest,
+                "progress": self._default_state(),
+                "created_at": int(time.time()),
+                "last_played": None,
+            }
+            self._save_users()
+            modal.destroy()
+            self.login_username.set(raw_name)
+            self.login_password.set("")
+            self.auth_message.config(
+                text="Account created. Enter your password to login.",
+                fg=COLORS["green"],
+            )
+
+        tk.Button(
+            form,
+            text="CREATE ACCOUNT",
+            command=create,
+            bg=COLORS["accent"],
+            fg="#101820",
+            activebackground="#FFC46D",
+            activeforeground="#101820",
+            relief="flat",
+            bd=0,
+            pady=10,
+            font=("Segoe UI", 8, "bold"),
+            cursor="hand2",
+        ).pack(fill="x", pady=(13, 5))
+
+        tk.Button(
+            form,
+            text="CANCEL",
+            command=modal.destroy,
+            bg=COLORS["panel2"],
+            fg=COLORS["muted"],
+            activebackground=COLORS["line"],
+            activeforeground=COLORS["text"],
+            relief="flat",
+            bd=0,
+            pady=9,
+            font=("Segoe UI", 8, "bold"),
+            cursor="hand2",
+        ).pack(fill="x")
+
+    def _login(self):
+        username = self.login_username.get().strip()
+        password = self.login_password.get()
+        key = username.lower()
+
+        account = self.users["users"].get(key)
+        if not account or not self._verify_password(password, account):
+            self.auth_message.config(
+                text="Incorrect username or password.",
+                fg=COLORS["red"],
+            )
+            return
+
+        self.current_user = key
+        self.state = self._normalize_state(account.get("progress"))
+        self.login_password.set("")
+
+        if self.active_overlay.winfo_exists():
+            self.active_overlay.destroy()
+
+        self._apply_suggested(show_notice=False)
+        self._render_all()
+        self.after(120, self._show_main_menu)
+
+    def _show_main_menu(self):
+        if not self.current_user:
+            self._show_login_screen()
+            return
+
+        if self.testing:
+            return
+
+        if hasattr(self, "active_overlay") and self.active_overlay.winfo_exists():
+            self.active_overlay.destroy()
+
+        self.active_overlay = self._overlay()
+        account = self.users["users"][self.current_user]
+        name = account.get("display_name", self.current_user)
+
+        card = tk.Frame(
+            self.active_overlay,
+            bg=COLORS["panel"],
+            highlightbackground=COLORS["line"],
+            highlightthickness=1,
+            padx=34,
+            pady=28,
+        )
+        card.place(relx=0.5, rely=0.5, anchor="center", width=470, height=540)
+
+        tk.Label(
+            card,
+            text="BUILDSAFE",
+            bg=COLORS["panel"],
+            fg=COLORS["accent"],
+            font=("Segoe UI", 8, "bold"),
+        ).pack()
+
+        tk.Label(
+            card,
+            text=f"Welcome, {name}",
+            bg=COLORS["panel"],
+            fg=COLORS["text"],
+            font=("Segoe UI", 22, "bold"),
+        ).pack(pady=(4, 2))
+
+        completed = sum(bool(v) for v in self.state["completed"])
+        tk.Label(
+            card,
+            text=f'{completed}/{len(MISSIONS)} projects complete  ·  Score {self.state["score"]:,}',
+            bg=COLORS["panel"],
+            fg=COLORS["muted"],
+            font=("Segoe UI", 8),
+        ).pack(pady=(0, 24))
+
+        primary_text = "CONTINUE" if completed or self.state["score"] else "START GAME"
+        tk.Button(
+            card,
+            text=f"▶   {primary_text}",
+            command=self._start_from_menu,
+            bg=COLORS["accent"],
+            fg="#101820",
+            activebackground="#FFC46D",
+            activeforeground="#101820",
+            relief="flat",
+            bd=0,
+            pady=13,
+            font=("Segoe UI", 10, "bold"),
+            cursor="hand2",
+        ).pack(fill="x", pady=5)
+
+        for text, command in [
+            ("PROJECTS", self._show_campaign_modal),
+            ("HOW TO PLAY", self._show_help_modal),
+            ("ENGINEERING DETAILS", self._show_details_modal),
+        ]:
+            tk.Button(
+                card,
+                text=text,
+                command=command,
+                bg=COLORS["panel2"],
+                fg=COLORS["text"],
+                activebackground=COLORS["line"],
+                activeforeground=COLORS["text"],
+                relief="flat",
+                bd=0,
+                pady=10,
+                font=("Segoe UI", 8, "bold"),
+                cursor="hand2",
+            ).pack(fill="x", pady=4)
+
+        tk.Button(
+            card,
+            text="LOG OUT",
+            command=self._logout,
+            bg=COLORS["panel"],
+            fg=COLORS["red"],
+            activebackground=COLORS["panel2"],
+            activeforeground=COLORS["red"],
+            relief="flat",
+            bd=0,
+            pady=9,
+            font=("Segoe UI", 8, "bold"),
+            cursor="hand2",
+        ).pack(fill="x", pady=(12, 0))
+
+        tk.Label(
+            card,
+            text="Local player profile",
+            bg=COLORS["panel"],
+            fg="#566B7A",
+            font=("Segoe UI", 7),
+        ).pack(side="bottom")
+
+    def _start_from_menu(self):
+        if hasattr(self, "active_overlay") and self.active_overlay.winfo_exists():
+            self.active_overlay.destroy()
+        self.after(120, self._show_mission_modal)
+
+    def _logout(self):
+        self._save_state()
+        self.current_user = None
+        self.state = self._default_state()
+        self.last_result = None
+        self._render_all()
+        self._show_login_screen()
+
 
     # ---------- calculations ----------
 
