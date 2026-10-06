@@ -1,95 +1,234 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>BuildSafe: Bridge Load Challenge</title>
-<style>
-:root{--navy:#17324d;--blue:#2d6ea3;--bg:#eef3f8;--card:#fff;--muted:#657382;--line:#d9e2ea;--good:#156b31;--goodbg:#dff3e4;--bad:#9d1c15;--badbg:#fde8e7}
-*{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Arial;background:var(--bg);color:#1f2f3d}
-header{background:var(--navy);color:#fff;padding:28px clamp(20px,5vw,60px)}h1{margin:0 0 6px;font-size:clamp(26px,4vw,40px)}header p{margin:0;color:#d8e7f4}
-.stats{display:flex;gap:18px;flex-wrap:wrap;align-items:center;background:#dbe8f2;padding:13px clamp(20px,5vw,60px);font-weight:700;color:var(--navy)}.stats .score{margin-left:auto}
-main{max-width:1180px;margin:auto;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 8px 24px rgba(23,50,77,.06)}
-h2{font-size:18px;color:var(--navy);margin:0 0 18px}.field{display:grid;grid-template-columns:1fr 1.25fr;gap:12px;align-items:center;margin:12px 0}label{font-weight:650}input,select,button{font:inherit;border-radius:10px}input,select{width:100%;padding:11px 12px;border:1px solid #bdcad5;background:#fff}button{border:0;padding:12px 16px;font-weight:800;cursor:pointer}.primary{width:100%;background:var(--blue);color:white;margin-top:10px}.secondary{width:100%;background:#e8eef4;color:var(--navy);margin-top:9px}
-.status{padding:14px;border-radius:12px;background:#f3f6f9;color:var(--navy);font-size:22px;font-weight:900;text-align:center;margin-bottom:14px}
-.results{white-space:pre-wrap;background:#fbfcfd;border:1px solid var(--line);border-radius:12px;padding:16px;min-height:330px;line-height:1.6;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.note,.tip{font-size:13px;color:var(--muted);line-height:1.5}.tip{color:#375a7f;margin-top:14px}.footer{max-width:1180px;margin:0 auto 30px;padding:0 24px;font-size:12px;color:var(--muted)}
-.badge{display:inline-block;background:#e9f0f6;color:var(--navy);padding:5px 9px;border-radius:999px;font-size:12px;font-weight:800;margin-bottom:10px}
-@media(max-width:800px){main{grid-template-columns:1fr}.field{grid-template-columns:1fr}.stats .score{margin-left:0}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <meta name="description" content="BuildSafe is an educational civil engineering bridge design game.">
+  <title>BuildSafe — Bridge Engineering Game</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header>
-  <div class="badge">CIVIL ENGINEERING • EDUCATIONAL GAME</div>
-  <h1>BuildSafe: Bridge Load Challenge</h1>
-  <p>Design a safe and cost-efficient simply supported beam.</p>
-</header>
-<div class="stats"><span id="round">Round 1</span><span id="challenge"></span><span class="score" id="score">Score: 0</span></div>
-<main>
-<section class="card">
-<h2>1. Beam Design Inputs</h2>
-<div class="field"><label>Material</label><select id="material"><option>Structural Steel</option><option>Engineered Timber</option><option>Aluminum</option></select></div>
-<div class="field"><label>Span Length (m)</label><input id="span" type="number" min="1" max="30" step="0.1" value="8"></div>
-<div class="field"><label>Beam Width b (mm)</label><input id="width" type="number" min="100" max="1500" value="250"></div>
-<div class="field"><label>Beam Depth h (mm)</label><input id="depth" type="number" min="150" max="2500" value="500"></div>
-<div class="field"><label>Applied Midspan Load (kN)</label><input id="load" type="number" min="1" max="2000" value="120"></div>
-<button class="primary" onclick="testDesign()">TEST DESIGN</button>
-<button class="secondary" onclick="newRound()">NEW CHALLENGE</button>
-<p class="note">Educational model only. Uses simplified rectangular-beam formulas and game-only cost factors.</p>
-</section>
-<section class="card">
-<h2>2. Structural Check & Game Result</h2>
-<div class="status" id="status">READY</div>
-<div class="results" id="results"></div>
-<div class="tip">Tip: Increasing beam depth has a strong effect on both bending stress and deflection.</div>
-</section>
-</main>
-<div class="footer">Web companion demo. The academic desktop version is implemented in Python using Tkinter. Do not use these simplified values for real structural design.</div>
-<script>
-const MATERIALS={
-"Structural Steel":{E:200000,allow:165,cost:190000},
-"Engineered Timber":{E:11000,allow:12,cost:75000},
-"Aluminum":{E:69000,allow:95,cost:240000}
-};
-let score=0,roundNo=1,targetLoad=120,budget=220000;
-const $=id=>document.getElementById(id);
-const peso=n=>"₱"+Math.round(n).toLocaleString();
-function choice(a){return a[Math.floor(Math.random()*a.length)]}
-function newRound(){
- targetLoad=choice([60,80,100,120,150,180,220,250]);
- budget=choice([140000,170000,200000,230000,260000]);
- $("load").value=targetLoad;
- $("round").textContent="Round "+roundNo;
- $("challenge").textContent="Target load: "+targetLoad+" kN  •  Budget: "+peso(budget);
- $("status").textContent="READY";$("status").style.background="#f3f6f9";$("status").style.color="#17324d";
- $("results").textContent="Choose a material and beam size, then click TEST DESIGN.\n\nPass conditions:\n• Bending stress ≤ allowable stress\n• Deflection ≤ L/360\n• Estimated cost ≤ challenge budget";
-}
-function testDesign(){
- const mat=$("material").value,p=MATERIALS[mat];
- const Lm=Number($("span").value),b=Number($("width").value),h=Number($("depth").value),PkN=Number($("load").value);
- if(!(Lm>=1&&Lm<=30&&b>=100&&b<=1500&&h>=150&&h<=2500&&PkN>=1&&PkN<=2000)){alert("Please enter values within the allowed ranges.");return}
- const L=Lm*1000,P=PkN*1000,I=b*Math.pow(h,3)/12,c=h/2,M=P*L/4;
- const stress=M*c/I,defl=P*Math.pow(L,3)/(48*p.E*I),limit=L/360;
- const volume=(b/1000)*(h/1000)*Lm,cost=volume*p.cost;
- const stressOK=stress<=p.allow,deflOK=defl<=limit,budgetOK=cost<=budget,passed=stressOK&&deflOK&&budgetOK;
- let verdict,points=0;
- if(passed){
-   const efficiency=Math.max(0,Math.min(100,(1-cost/Math.max(budget,1))*100+50));
-   points=Math.floor(100+efficiency);score+=points;roundNo++;
-   $("status").textContent="PASS  +"+points+" pts";$("status").style.background="#dff3e4";$("status").style.color="#156b31";
-   verdict="Your design passed all three checks.";
- }else{
-   $("status").textContent="REVISE DESIGN";$("status").style.background="#fde8e7";$("status").style.color="#9d1c15";
-   verdict="Your design did not pass all challenge requirements.";
- }
- $("score").textContent="Score: "+score;
- $("results").textContent=
- verdict+"\n\nMaterial: "+mat+"\nSpan: "+Lm.toFixed(2)+" m\nApplied Load: "+PkN.toFixed(1)+" kN\n\n"+
- "BENDING CHECK\nStress = "+stress.toFixed(2)+" MPa\nAllowable = "+p.allow.toFixed(2)+" MPa\nStatus = "+(stressOK?"PASS":"FAIL")+"\n\n"+
- "DEFLECTION CHECK\nDeflection = "+defl.toFixed(2)+" mm\nLimit (L/360) = "+limit.toFixed(2)+" mm\nStatus = "+(deflOK?"PASS":"FAIL")+"\n\n"+
- "COST CHECK\nEstimated Cost = "+peso(cost)+"\nBudget = "+peso(budget)+"\nStatus = "+(budgetOK?"PASS":"FAIL");
-}
-newRound();
-</script>
+  <div class="game-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">BS</div>
+        <div>
+          <div class="eyebrow">CIVIL ENGINEERING SIM</div>
+          <h1>BuildSafe</h1>
+        </div>
+      </div>
+
+      <div class="hud" aria-label="Player status">
+        <div class="hud-item"><span>LEVEL</span><strong id="levelValue">1</strong></div>
+        <div class="hud-item hud-wide"><span>XP</span><strong id="xpValue">0 / 500</strong><div class="xp-track"><i id="xpBar"></i></div></div>
+        <div class="hud-item"><span>SCORE</span><strong id="scoreValue">0</strong></div>
+        <button class="icon-btn" id="soundBtn" type="button" aria-label="Toggle sound" title="Toggle sound">🔊</button>
+        <button class="icon-btn" id="helpBtn" type="button" aria-label="Open engineering guide" title="Engineering guide">?</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="mission-banner">
+        <div>
+          <div class="mission-kicker"><span id="missionNumber">MISSION 01</span><span id="difficultyBadge" class="badge">ROOKIE</span></div>
+          <h2 id="missionTitle">Neighborhood Connector</h2>
+          <p id="missionStory">Design a safe crossing for a growing community.</p>
+        </div>
+        <div class="mission-stats">
+          <div><span>SPAN</span><strong id="missionSpan">8.0 m</strong></div>
+          <div><span>DESIGN LOAD</span><strong id="missionLoad">100 kN</strong></div>
+          <div><span>MAX BUDGET</span><strong id="missionBudget">₱180,000</strong></div>
+          <div><span>ATTEMPTS</span><strong id="attemptsValue">3</strong></div>
+        </div>
+      </section>
+
+      <section class="game-grid">
+        <aside class="panel controls-panel">
+          <div class="panel-head">
+            <div>
+              <span class="section-no">01</span>
+              <h3>Design Lab</h3>
+            </div>
+            <button class="text-btn" id="resetDesignBtn" type="button">Reset design</button>
+          </div>
+
+          <fieldset class="material-fieldset">
+            <legend>Structural material</legend>
+            <div class="material-grid" id="materialGrid">
+              <label class="material-card">
+                <input type="radio" name="material" value="steel" checked>
+                <span class="material-icon">ST</span>
+                <span><strong>Structural Steel</strong><small>Strong · stiff · premium</small></span>
+              </label>
+              <label class="material-card">
+                <input type="radio" name="material" value="timber">
+                <span class="material-icon">TM</span>
+                <span><strong>Engineered Timber</strong><small>Light · economical · flexible</small></span>
+              </label>
+              <label class="material-card">
+                <input type="radio" name="material" value="aluminum">
+                <span class="material-icon">AL</span>
+                <span><strong>Aluminum</strong><small>Light · corrosion resistant</small></span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="control-group">
+            <div class="control-label"><label for="widthRange">Girder width</label><output id="widthOut">250 mm</output></div>
+            <input id="widthRange" type="range" min="150" max="650" step="10" value="250">
+            <div class="range-scale"><span>150</span><span>650 mm</span></div>
+          </div>
+
+          <div class="control-group">
+            <div class="control-label"><label for="depthRange">Girder depth</label><output id="depthOut">500 mm</output></div>
+            <input id="depthRange" type="range" min="250" max="1200" step="10" value="500">
+            <div class="range-scale"><span>250</span><span>1200 mm</span></div>
+          </div>
+
+          <div class="control-group">
+            <div class="control-label"><label for="girderRange">Parallel girders</label><output id="girderOut">2</output></div>
+            <input id="girderRange" type="range" min="1" max="6" step="1" value="2">
+            <div class="range-scale"><span>1</span><span>6 girders</span></div>
+          </div>
+
+          <div class="live-estimate">
+            <div><span>EST. COST</span><strong id="costPreview">₱0</strong></div>
+            <div><span>EST. MASS</span><strong id="massPreview">0 t</strong></div>
+            <div><span>BUDGET USED</span><strong id="budgetPreview">0%</strong></div>
+          </div>
+
+          <button class="test-btn" id="testBtn" type="button">
+            <span class="test-icon">▶</span>
+            <span><strong>RUN LOAD TEST</strong><small>Simulate the mission design load</small></span>
+          </button>
+        </aside>
+
+        <section class="panel sim-panel">
+          <div class="panel-head">
+            <div><span class="section-no">02</span><h3>Load Test Arena</h3></div>
+            <div class="sim-status" id="simStatus"><i></i><span>DESIGN MODE</span></div>
+          </div>
+
+          <div class="arena" id="arena">
+            <div class="skyline" aria-hidden="true"></div>
+            <svg class="bridge-svg" viewBox="0 0 900 360" role="img" aria-label="Animated simplified bridge model">
+              <defs>
+                <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#16304d"/>
+                  <stop offset="100%" stop-color="#081525"/>
+                </linearGradient>
+                <filter id="softShadow"><feDropShadow dx="0" dy="8" stdDeviation="6" flood-opacity=".35"/></filter>
+              </defs>
+              <rect x="0" y="280" width="900" height="80" fill="url(#waterGrad)"/>
+              <g class="bridge-world">
+                <rect x="50" y="221" width="100" height="59" rx="3" class="abutment"/>
+                <rect x="750" y="221" width="100" height="59" rx="3" class="abutment"/>
+                <g id="bridgeStructure" filter="url(#softShadow)">
+                  <path id="deckPath" d="M130 210 Q450 210 770 210" class="deck"/>
+                  <path id="girderPath" d="M130 225 Q450 225 770 225" class="girder"/>
+                  <g class="truss" id="trussGroup">
+                    <path d="M150 220 L230 160 L310 220 L390 160 L470 220 L550 160 L630 220 L710 160 L750 220" />
+                    <path d="M150 220 L230 220 L310 220 L390 220 L470 220 L550 220 L630 220 L710 220 L750 220" />
+                  </g>
+                </g>
+                <g id="truck" class="truck" transform="translate(70 177)">
+                  <rect x="0" y="7" width="52" height="25" rx="4"/>
+                  <rect x="50" y="15" width="26" height="17" rx="3"/>
+                  <circle cx="18" cy="35" r="8"/><circle cx="58" cy="35" r="8"/>
+                </g>
+                <g class="load-arrow" id="loadArrow">
+                  <path d="M450 88 L450 165"/><path d="M438 151 L450 166 L462 151"/>
+                  <text x="450" y="74" text-anchor="middle" id="loadArrowText">100 kN</text>
+                </g>
+              </g>
+              <text x="28" y="338" class="water-label">RIVER / CLEAR SPAN</text>
+            </svg>
+
+            <div class="arena-overlay">
+              <div class="meter">
+                <div class="meter-head"><span>STRUCTURAL UTILIZATION</span><strong id="utilValue">0%</strong></div>
+                <div class="meter-track"><i id="utilBar"></i><span class="sweet-zone"></span></div>
+                <div class="meter-labels"><span>UNDERUSED</span><span>OPTIMAL</span><span>FAILURE</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="telemetry">
+            <article><span>BENDING STRESS</span><strong id="stressValue">—</strong><small id="stressLimit">Limit —</small></article>
+            <article><span>DEFLECTION</span><strong id="deflectionValue">—</strong><small id="deflectionLimit">Limit —</small></article>
+            <article><span>COST</span><strong id="costValue">—</strong><small id="costLimit">Budget —</small></article>
+            <article><span>SAFETY</span><strong id="safetyValue">READY</strong><small id="safetySub">Awaiting load test</small></article>
+          </div>
+
+          <div class="event-log" id="eventLog" aria-live="polite">
+            <div><time>SYS</time><span>Design station online. Configure your bridge and run the load test.</span></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="bottom-grid">
+        <section class="panel campaign-panel">
+          <div class="panel-head">
+            <div><span class="section-no">03</span><h3>Campaign</h3></div>
+            <button class="text-btn danger" id="resetCampaignBtn" type="button">Reset campaign</button>
+          </div>
+          <div class="campaign-track" id="campaignTrack"></div>
+        </section>
+
+        <section class="panel engineer-panel">
+          <div class="panel-head"><div><span class="section-no">04</span><h3>Engineer Rating</h3></div></div>
+          <div class="rating-body">
+            <div class="grade" id="gradeValue">C</div>
+            <div>
+              <strong id="ratingTitle">Junior Designer</strong>
+              <p id="ratingText">Complete missions safely and efficiently to improve your rating.</p>
+            </div>
+          </div>
+          <div class="best-row"><span>Best mission score</span><strong id="bestScoreValue">0</strong></div>
+        </section>
+      </section>
+    </main>
+
+    <footer>
+      <span>BuildSafe v2.0 · Educational structural simulation</span>
+      <span>Not for real-world engineering design or construction decisions.</span>
+    </footer>
+  </div>
+
+  <dialog id="resultDialog" class="game-dialog">
+    <div class="dialog-inner">
+      <div class="dialog-icon" id="dialogIcon">✓</div>
+      <div class="dialog-kicker" id="dialogKicker">LOAD TEST COMPLETE</div>
+      <h2 id="dialogTitle">Bridge Approved</h2>
+      <p id="dialogMessage">Your design passed the mission.</p>
+      <div class="score-breakdown" id="scoreBreakdown"></div>
+      <div class="dialog-actions">
+        <button class="secondary-btn" id="closeResultBtn" type="button">Review design</button>
+        <button class="primary-btn" id="nextMissionBtn" type="button">Next mission →</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="helpDialog" class="game-dialog help-dialog">
+    <div class="dialog-inner">
+      <div class="dialog-kicker">ENGINEERING GUIDE</div>
+      <h2>How BuildSafe works</h2>
+      <div class="guide-grid">
+        <article><strong>1. Read the mission</strong><p>Every project has a fixed span, target load and maximum budget.</p></article>
+        <article><strong>2. Build your section</strong><p>Choose material, beam width, beam depth and the number of parallel girders.</p></article>
+        <article><strong>3. Run the load test</strong><p>The truck applies the design load and the game checks stress, deflection and cost.</p></article>
+        <article><strong>4. Optimize</strong><p>A safe design passes, but an efficient design earns more points. Aim for high utilization without exceeding limits.</p></article>
+      </div>
+      <div class="formula-box">
+        <strong>Simplified beam model</strong>
+        <code>M = PL/4 · I = bh³/12 · σ = Mc/I · δ = PL³/(48EI)</code>
+        <p>Each parallel girder shares the applied load equally. The game uses simplified educational material properties and cost factors.</p>
+      </div>
+      <div class="dialog-actions"><button class="primary-btn" id="closeHelpBtn" type="button">Got it</button></div>
+    </div>
+  </dialog>
+
+  <script src="game.js"></script>
 </body>
 </html>
