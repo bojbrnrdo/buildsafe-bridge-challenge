@@ -10,6 +10,10 @@ The required application is:
 
 It uses Python's built-in **Tkinter** GUI toolkit and includes:
 
+- Local player account system with Login / Create Account
+- Salted PBKDF2 password hashing (no plain-text passwords)
+- Player-specific score, XP, missions, and saved progress
+- Main menu before gameplay
 - Minimalist game HUD
 - Mission brief popups
 - Material, girder width, depth, and girder-count controls
