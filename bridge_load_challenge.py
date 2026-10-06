@@ -882,8 +882,17 @@ class BuildSafeGame(tk.Tk):
         self.login_username = tk.StringVar()
         self.login_password = tk.StringVar()
 
-        self._auth_field(card, "USERNAME", self.login_username)
-        self._auth_field(card, "PASSWORD", self.login_password, password=True)
+        username_entry = self._auth_field(
+            card,
+            "USERNAME",
+            self.login_username,
+        )
+        password_entry = self._auth_field(
+            card,
+            "PASSWORD",
+            self.login_password,
+            password=True,
+        )
 
         self.auth_message = tk.Label(
             card,
@@ -932,8 +941,9 @@ class BuildSafeGame(tk.Tk):
             font=("Segoe UI", 7),
         ).pack(side="bottom")
 
-        card.bind_all("<Return>", lambda _event: self._login())
-        self.after(100, lambda: self._focus_first_entry(card))
+        username_entry.bind("<Return>", lambda _event: password_entry.focus_set())
+        password_entry.bind("<Return>", lambda _event: self._login())
+        self.after(100, username_entry.focus_set)
 
     def _focus_first_entry(self, container):
         for child in container.winfo_children():
