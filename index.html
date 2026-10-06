@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>BuildSafe: Bridge Load Challenge</title>
+<style>
+:root{--navy:#17324d;--blue:#2d6ea3;--bg:#eef3f8;--card:#fff;--muted:#657382;--line:#d9e2ea;--good:#156b31;--goodbg:#dff3e4;--bad:#9d1c15;--badbg:#fde8e7}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Arial;background:var(--bg);color:#1f2f3d}
+header{background:var(--navy);color:#fff;padding:28px clamp(20px,5vw,60px)}h1{margin:0 0 6px;font-size:clamp(26px,4vw,40px)}header p{margin:0;color:#d8e7f4}
+.stats{display:flex;gap:18px;flex-wrap:wrap;align-items:center;background:#dbe8f2;padding:13px clamp(20px,5vw,60px);font-weight:700;color:var(--navy)}.stats .score{margin-left:auto}
+main{max-width:1180px;margin:auto;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 8px 24px rgba(23,50,77,.06)}
+h2{font-size:18px;color:var(--navy);margin:0 0 18px}.field{display:grid;grid-template-columns:1fr 1.25fr;gap:12px;align-items:center;margin:12px 0}label{font-weight:650}input,select,button{font:inherit;border-radius:10px}input,select{width:100%;padding:11px 12px;border:1px solid #bdcad5;background:#fff}button{border:0;padding:12px 16px;font-weight:800;cursor:pointer}.primary{width:100%;background:var(--blue);color:white;margin-top:10px}.secondary{width:100%;background:#e8eef4;color:var(--navy);margin-top:9px}
+.status{padding:14px;border-radius:12px;background:#f3f6f9;color:var(--navy);font-size:22px;font-weight:900;text-align:center;margin-bottom:14px}
+.results{white-space:pre-wrap;background:#fbfcfd;border:1px solid var(--line);border-radius:12px;padding:16px;min-height:330px;line-height:1.6;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.note,.tip{font-size:13px;color:var(--muted);line-height:1.5}.tip{color:#375a7f;margin-top:14px}.footer{max-width:1180px;margin:0 auto 30px;padding:0 24px;font-size:12px;color:var(--muted)}
+.badge{display:inline-block;background:#e9f0f6;color:var(--navy);padding:5px 9px;border-radius:999px;font-size:12px;font-weight:800;margin-bottom:10px}
+@media(max-width:800px){main{grid-template-columns:1fr}.field{grid-template-columns:1fr}.stats .score{margin-left:0}}
+</style>
+</head>
+<body>
+<header>
+  <div class="badge">CIVIL ENGINEERING • EDUCATIONAL GAME</div>
+  <h1>BuildSafe: Bridge Load Challenge</h1>
+  <p>Design a safe and cost-efficient simply supported beam.</p>
+</header>
+<div class="stats"><span id="round">Round 1</span><span id="challenge"></span><span class="score" id="score">Score: 0</span></div>
+<main>
+<section class="card">
+<h2>1. Beam Design Inputs</h2>
+<div class="field"><label>Material</label><select id="material"><option>Structural Steel</option><option>Engineered Timber</option><option>Aluminum</option></select></div>
+<div class="field"><label>Span Length (m)</label><input id="span" type="number" min="1" max="30" step="0.1" value="8"></div>
+<div class="field"><label>Beam Width b (mm)</label><input id="width" type="number" min="100" max="1500" value="250"></div>
+<div class="field"><label>Beam Depth h (mm)</label><input id="depth" type="number" min="150" max="2500" value="500"></div>
+<div class="field"><label>Applied Midspan Load (kN)</label><input id="load" type="number" min="1" max="2000" value="120"></div>
+<button class="primary" onclick="testDesign()">TEST DESIGN</button>
+<button class="secondary" onclick="newRound()">NEW CHALLENGE</button>
+<p class="note">Educational model only. Uses simplified rectangular-beam formulas and game-only cost factors.</p>
+</section>
+<section class="card">
+<h2>2. Structural Check & Game Result</h2>
+<div class="status" id="status">READY</div>
+<div class="results" id="results"></div>
+<div class="tip">Tip: Increasing beam depth has a strong effect on both bending stress and deflection.</div>
+</section>
+</main>
+<div class="footer">Web companion demo. The academic desktop version is implemented in Python using Tkinter. Do not use these simplified values for real structural design.</div>
+<script>
+const MATERIALS={
+"Structural Steel":{E:200000,allow:165,cost:190000},
+"Engineered Timber":{E:11000,allow:12,cost:75000},
+"Aluminum":{E:69000,allow:95,cost:240000}
+};
+let score=0,roundNo=1,targetLoad=120,budget=220000;
+const $=id=>document.getElementById(id);
+const peso=n=>"₱"+Math.round(n).toLocaleString();
+function choice(a){return a[Math.floor(Math.random()*a.length)]}
+function newRound(){
+ targetLoad=choice([60,80,100,120,150,180,220,250]);
+ budget=choice([140000,170000,200000,230000,260000]);
+ $("load").value=targetLoad;
+ $("round").textContent="Round "+roundNo;
+ $("challenge").textContent="Target load: "+targetLoad+" kN  •  Budget: "+peso(budget);
+ $("status").textContent="READY";$("status").style.background="#f3f6f9";$("status").style.color="#17324d";
+ $("results").textContent="Choose a material and beam size, then click TEST DESIGN.\n\nPass conditions:\n• Bending stress ≤ allowable stress\n• Deflection ≤ L/360\n• Estimated cost ≤ challenge budget";
+}
+function testDesign(){
+ const mat=$("material").value,p=MATERIALS[mat];
+ const Lm=Number($("span").value),b=Number($("width").value),h=Number($("depth").value),PkN=Number($("load").value);
+ if(!(Lm>=1&&Lm<=30&&b>=100&&b<=1500&&h>=150&&h<=2500&&PkN>=1&&PkN<=2000)){alert("Please enter values within the allowed ranges.");return}
+ const L=Lm*1000,P=PkN*1000,I=b*Math.pow(h,3)/12,c=h/2,M=P*L/4;
+ const stress=M*c/I,defl=P*Math.pow(L,3)/(48*p.E*I),limit=L/360;
+ const volume=(b/1000)*(h/1000)*Lm,cost=volume*p.cost;
+ const stressOK=stress<=p.allow,deflOK=defl<=limit,budgetOK=cost<=budget,passed=stressOK&&deflOK&&budgetOK;
+ let verdict,points=0;
+ if(passed){
+   const efficiency=Math.max(0,Math.min(100,(1-cost/Math.max(budget,1))*100+50));
+   points=Math.floor(100+efficiency);score+=points;roundNo++;
+   $("status").textContent="PASS  +"+points+" pts";$("status").style.background="#dff3e4";$("status").style.color="#156b31";
+   verdict="Your design passed all three checks.";
+ }else{
+   $("status").textContent="REVISE DESIGN";$("status").style.background="#fde8e7";$("status").style.color="#9d1c15";
+   verdict="Your design did not pass all challenge requirements.";
+ }
+ $("score").textContent="Score: "+score;
+ $("results").textContent=
+ verdict+"\n\nMaterial: "+mat+"\nSpan: "+Lm.toFixed(2)+" m\nApplied Load: "+PkN.toFixed(1)+" kN\n\n"+
+ "BENDING CHECK\nStress = "+stress.toFixed(2)+" MPa\nAllowable = "+p.allow.toFixed(2)+" MPa\nStatus = "+(stressOK?"PASS":"FAIL")+"\n\n"+
+ "DEFLECTION CHECK\nDeflection = "+defl.toFixed(2)+" mm\nLimit (L/360) = "+limit.toFixed(2)+" mm\nStatus = "+(deflOK?"PASS":"FAIL")+"\n\n"+
+ "COST CHECK\nEstimated Cost = "+peso(cost)+"\nBudget = "+peso(budget)+"\nStatus = "+(budgetOK?"PASS":"FAIL");
+}
+newRound();
+</script>
+</body>
+</html>
